@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { replay } from "./replay/replayer.js";
+import { runDiscovery } from "./agent/loop.js";
 import type { Artifact } from "./artifact/types.js";
 
 const TARGET_URL = process.env.TARGET_URL ?? "http://localhost:4000";
@@ -26,8 +27,15 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.kind === "success" || result.kind === "businessOutcome" ? 0 : 1);
   } else if (cmd === "run-agent") {
-    console.error("run-agent is implemented in V1 (see BUILD_PLAN.md).");
-    process.exit(1);
+    const goal = arg("goal");
+    const target = arg("target") ?? TARGET_URL;
+    if (!goal) {
+      console.error("usage: run-agent --goal '...' --target <url>");
+      process.exit(1);
+    }
+    const result = await runDiscovery(goal, target, EVIDENCE_ROOT);
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(result.kind === "success" ? 0 : 1);
   } else {
     console.error("usage: run-agent --goal '...' --target <url>  |  replay --artifact <path> --input '<json>'");
     process.exit(1);

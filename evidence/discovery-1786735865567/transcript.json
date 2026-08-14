@@ -1,0 +1,49 @@
+[
+  {
+    "index": 0,
+    "observation": {
+      "url": "http://localhost:4000/",
+      "ax": "- heading \"Member Services Console\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Member ID\":\n      - cell \"Member ID\"\n      - cell:\n        - textbox \"Member ID\"\n    - row \"Search\":\n      - cell \"Search\":\n        - button \"Search\""
+    },
+    "action": {
+      "name": "type",
+      "args": {
+        "role": "textbox",
+        "name": "Member ID",
+        "value": "12345",
+        "reasoning": "I need to enter the member ID 12345 into the textbox to look up this member"
+      }
+    }
+  },
+  {
+    "index": 1,
+    "observation": {
+      "url": "http://localhost:4000/",
+      "ax": "- heading \"Member Services Console\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Member ID 12345\":\n      - cell \"Member ID\"\n      - cell \"12345\":\n        - textbox \"Member ID\": \"12345\"\n    - row \"Search\":\n      - cell \"Search\":\n        - button \"Search\""
+    },
+    "action": {
+      "name": "click",
+      "args": {
+        "role": "button",
+        "name": "Search",
+        "reasoning": "To look up member 12345, I need to click the Search button after the Member ID has been entered in the textbox"
+      }
+    }
+  },
+  {
+    "index": 2,
+    "observation": {
+      "url": "http://localhost:4000/member?memberId=12345",
+      "ax": "- heading \"Member Services Console\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Name Alice Rivera\":\n      - cell \"Name\"\n      - cell \"Alice Rivera\"\n    - row \"Member ID 12345\":\n      - cell \"Member ID\"\n      - cell \"12345\"\n    - row \"Savings Balance 4820.55 USD\":\n      - cell \"Savings Balance\"\n      - cell \"4820.55 USD\"\n- paragraph:\n  - link \"Open a new sub-account for this member\":\n    - /url: /member/12345/new-subaccount\n- paragraph:\n  - link \"Back to search\":\n    - /url: /"
+    },
+    "action": {
+      "name": "extract",
+      "args": {
+        "role": "cell",
+        "name": "4820.55 USD",
+        "key": "savings_balance",
+        "reasoning": "Extract the current savings balance for member 12345 from the table to complete the goal"
+      }
+    }
+  }
+]

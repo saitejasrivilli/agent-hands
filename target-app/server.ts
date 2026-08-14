@@ -14,10 +14,8 @@ const layout = (title: string, body: string) => `
 <html>
 <head><title>${title}</title></head>
 <body>
-<table border="0" cellpadding="4" cellspacing="0" width="600">
-<tr><td colspan="2"><h2>Member Services Console</h2></td></tr>
-<tr><td colspan="2">${body}</td></tr>
-</table>
+<h2>Member Services Console</h2>
+${body}
 </body>
 </html>`;
 

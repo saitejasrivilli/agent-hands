@@ -56,6 +56,36 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   mid-flow business-outcome detection (check for "no member found" marker before attempting
   extract, not only at the end) — tracked as V3 scope, not deferred accidentally.
 
+- **LLM provider switched OpenAI → Anthropic (Claude) for V1**: the env's `OPENAI_API_KEY`
+  returned 401 (invalid/rotated). User supplied several fresh keys via a local `.env`
+  (gitignored, verified untracked/never committed before use — confirmed via `git check-ignore`
+  + `git log --all -- .env` before touching it, since keys couldn't be rotated). Tested each
+  key's validity by HTTP status code only (never printed key values or full response bodies).
+  Anthropic/Groq/Gemini/Cohere all valid; picked Anthropic since it matches the brief's own
+  encouraged tooling (Claude Code) and interface.ai's JD. `AGENT_MODEL` env var makes the
+  choice swappable without code changes.
+- **Secrets handling for local dev**: `.env.example` (committed, placeholder values only) +
+  `.env` (gitignored, real keys) using Node 25's native `--env-file` flag — no `dotenv`
+  dependency added, keeps V0's minimal dependency footprint.
+- **Real finding, not a bug**: my own `layout()` HTML wrapper in the target app nested the
+  entire page body inside an outer `<table>`, which made every `role=cell` locator ambiguous
+  (the outer wrapping `<td>`'s accessible name concatenates all descendant text, so any
+  substring match on inner cell text also hit the outer cell). This surfaced for real during
+  the first genuine LLM discovery run — Claude picked a reasonable `cell`+text locator, the
+  resolver correctly refused the ambiguous match rather than guessing (per BEST_PRACTICES.md
+  §1), and the run went `stuck` after retrying for `max_steps`. Fixed by removing the
+  redundant outer table from `layout()` (kept the real per-field data table, which is the
+  actual "legacy surface" being tested) — not a workaround, a correction of self-inflicted
+  over-legacy-ness that wasn't part of the intended design. V0's replay artifact was
+  re-verified unaffected after the fix.
+- **V1 discovery loop uses only `role`+accessible-name locators** (no multi-strategy fallback
+  during discovery) — intentionally simpler than the Replayer's fallback chain; discovery's
+  job is to produce a transcript, robustness/fallback strategy generation happens in V2's
+  artifact compiler, not duplicated in the agent loop itself.
+- **Stop conditions**: max 8 steps, 120s wall-clock timeout, both env-overridable
+  (`AGENT_MAX_STEPS`, `AGENT_TIMEOUT_MS`). Chosen as generous-but-bounded defaults for a
+  3-5 step flow; not tuned further since V1's only requirement was one genuine successful run.
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step
