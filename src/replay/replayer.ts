@@ -1,7 +1,66 @@
-import type { Artifact, Result, Step } from "../artifact/types.js";
+import type { Artifact, Checkpoint, RecoveryRule, Result, Step } from "../artifact/types.js";
 import { PlaywrightAdapter, LocatorResolutionError } from "../adapters/playwright-adapter.js";
 import { EvidenceLogger } from "../evidence/logger.js";
 import { resolveLocator } from "./locator-resolver.js";
+
+// Known "expected business outcome" markers, checked after every step (not
+// just at the very end) — a not-found result can legitimately appear partway
+// through a flow, and treating it as a crash rather than a typed outcome is
+// "the most common design mistake" per the brief's own glossary.
+const BUSINESS_OUTCOME_MARKERS: Array<{ pattern: RegExp; code: string; detail: string }> = [
+  { pattern: /no member found/i, code: "member_not_found", detail: "target app reported no matching member" },
+];
+
+async function checkBusinessOutcome(adapter: PlaywrightAdapter): Promise<{ code: string; detail: string } | null> {
+  const state = await adapter.observe();
+  for (const marker of BUSINESS_OUTCOME_MARKERS) {
+    if (marker.pattern.test(state.domSummary)) return { code: marker.code, detail: marker.detail };
+  }
+  return null;
+}
+
+async function checkAndApplyRecoveries(
+  adapter: PlaywrightAdapter,
+  rules: RecoveryRule[],
+  applied: Map<number, number>,
+  logger: EvidenceLogger
+): Promise<void> {
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i];
+    const count = applied.get(i) ?? 0;
+    if (count >= rule.maxApplications) continue;
+
+    const matched = await matchesCondition(adapter, rule.matchCondition);
+    if (!matched) continue;
+
+    logger.log("system", "recovery_triggered", { ruleIndex: i, action: rule.action });
+    if (rule.action === "dismiss" || rule.action === "retryStep") {
+      // "dismiss" resolves the condition's own target and clicks it (e.g. a
+      // "Continue" link/button on an interstitial). "retryStep" is a no-op
+      // here (the caller retries the step naturally on the next loop pass).
+      if (rule.action === "dismiss" && rule.matchCondition.target) {
+        const r = await resolveLocator(adapter.page(), rule.matchCondition.target.strategies);
+        await r.locator.click();
+      }
+    } else if (rule.action === "reloadAndRetry") {
+      await adapter.page().reload();
+    }
+    applied.set(i, count + 1);
+    logger.log("system", "recovery_applied", { ruleIndex: i });
+  }
+}
+
+async function matchesCondition(adapter: PlaywrightAdapter, cp: Checkpoint): Promise<boolean> {
+  if (cp.kind === "elementVisible" && cp.target) {
+    try {
+      const r = await resolveLocator(adapter.page(), cp.target.strategies);
+      return await r.locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 
 function fillTemplate(template: string, inputs: Record<string, unknown>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(inputs[key] ?? ""));
@@ -39,9 +98,26 @@ export async function replay(
 
   const adapter = await PlaywrightAdapter.launch(startUrl);
   const outputs: Record<string, unknown> = {};
+  const recoveriesApplied = new Map<number, number>();
 
   try {
     for (const step of artifact.steps) {
+      // Recoverable conditions (e.g. a dismissible interstitial) can appear
+      // before a step that would otherwise fail to resolve its target —
+      // check and resolve them proactively, bounded by maxApplications.
+      await checkAndApplyRecoveries(adapter, artifact.recoveryRules, recoveriesApplied, logger);
+
+      // Business outcomes (e.g. "no such member") can legitimately appear
+      // mid-flow, not just at the end — check before every step so a
+      // downstream step never mistakes a legitimate outcome for a crash.
+      const outcome = await checkBusinessOutcome(adapter);
+      if (outcome) {
+        const result: Result = { kind: "businessOutcome", ...outcome, evidenceId: runId };
+        logger.log("system", "business_outcome", outcome);
+        logger.writeResult(result);
+        return result;
+      }
+
       logger.log("system", "step_start", { index: step.index, action: step.action });
       try {
         await executeStep(adapter, step, inputs, outputs);
@@ -64,16 +140,12 @@ export async function replay(
       }
     }
 
-    // Business-outcome check: known "not found" marker present on page.
-    const state = await adapter.observe();
-    if (/no member found/i.test(state.domSummary)) {
-      const result: Result = {
-        kind: "businessOutcome",
-        code: "member_not_found",
-        detail: "target app reported no matching member",
-        evidenceId: runId,
-      };
-      logger.log("system", "business_outcome", { code: result.code });
+    // Final business-outcome check (covers outcomes only visible after the
+    // last step, e.g. a checkpoint page revealing "not found").
+    const finalOutcome = await checkBusinessOutcome(adapter);
+    if (finalOutcome) {
+      const result: Result = { kind: "businessOutcome", ...finalOutcome, evidenceId: runId };
+      logger.log("system", "business_outcome", finalOutcome);
       logger.writeResult(result);
       return result;
     }

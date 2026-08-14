@@ -1,0 +1,6 @@
+{
+  "kind": "businessOutcome",
+  "code": "member_not_found",
+  "detail": "target app reported no matching member",
+  "evidenceId": "replay-lookup-savings-balance-1786737312169"
+}

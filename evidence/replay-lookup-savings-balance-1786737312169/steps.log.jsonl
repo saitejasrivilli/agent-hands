@@ -1,0 +1,6 @@
+{"ts":"2026-08-14T19:55:12.170Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance","inputs":{"memberId":"99999"}}}
+{"ts":"2026-08-14T19:55:12.747Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T19:55:12.852Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T19:55:12.855Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T19:55:12.905Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T19:55:12.919Z","actor":"system","event":"business_outcome","detail":{"code":"member_not_found","detail":"target app reported no matching member"}}

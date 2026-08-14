@@ -121,6 +121,22 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   it does); a real fix would parse structured label/value pairs instead of raw row text —
   candidate for "Cuts" section of REPORT.md if not addressed later.
 
+- **V3 error taxonomy — fixed the V0 known gap for real**: business-outcome detection now
+  runs before every step (and once more after the loop), not just at the end — a not-found
+  marker appearing mid-flow is now correctly classified as `businessOutcome` instead of
+  falling through to a locator-resolution `failure`. Added a second target-app member
+  (`55555`) with a deliberate dismissible "session expiring" interstitial to exercise the
+  recoverable-condition path for real (not simulated) — `recoveryRules` are checked before
+  each step, bounded by `maxApplications` per rule, and only `dismiss` (click the matched
+  element) and `reloadAndRetry` (page reload) are implemented; `retryStep` is a no-op marker
+  since the step loop naturally retries on its next pass.
+- **Verified all 3 `Result` variants for real, same session**: success (member 12345,
+  regression-checked, unaffected), businessOutcome (member 99999 → `member_not_found`, no
+  longer a hard failure), recoverable-then-success (member 55555 → interstitial dismissed,
+  confirmed via `recovery_triggered`/`recovery_applied` log events firing at the expected
+  point in the sequence, not just a lucky pass). Also regression-checked V2's compiled
+  artifact still replays correctly after the shared Replayer changes — no breakage.
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step

@@ -1,0 +1,10 @@
+{"ts":"2026-08-14T19:55:13.566Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-recoverable","inputs":{"memberId":"55555"}}}
+{"ts":"2026-08-14T19:55:13.725Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T19:55:13.741Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T19:55:13.744Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T19:55:13.786Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T19:55:13.797Z","actor":"system","event":"recovery_triggered","detail":{"ruleIndex":0,"action":"dismiss"}}
+{"ts":"2026-08-14T19:55:13.842Z","actor":"system","event":"recovery_applied","detail":{"ruleIndex":0}}
+{"ts":"2026-08-14T19:55:13.857Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-14T19:55:13.859Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-14T19:55:13.863Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"Savings Balance950.00 USD"}}}

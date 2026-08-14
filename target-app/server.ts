@@ -54,6 +54,22 @@ app.get("/member", (req, res) => {
     return;
   }
 
+  // Deliberate recoverable runtime condition: a dismissible "session expiring"
+  // style interstitial that legitimately appears sometimes in real enterprise
+  // apps (Section 1). ?ack=1 marks it dismissed for this request.
+  if (member.requiresInterstitial && req.query.ack !== "1") {
+    res.send(
+      layout(
+        "Session Notice",
+        `
+        <p>Your session is about to expire due to inactivity.</p>
+        <p><a href="/member?memberId=${member.id}&ack=1">Continue</a></p>
+        `
+      )
+    );
+    return;
+  }
+
   res.send(
     layout(
       `Member ${member.id}`,
