@@ -1,0 +1,8 @@
+{"ts":"2026-08-14T20:47:33.257Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance+vendorB","inputs":{"memberId":"12345"}}}
+{"ts":"2026-08-14T20:47:33.406Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T20:47:33.420Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T20:47:33.423Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T20:47:33.481Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T20:47:33.496Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-14T20:47:33.498Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-14T20:47:33.502Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"4820.55 USD"}}}

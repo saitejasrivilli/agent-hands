@@ -214,6 +214,41 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   all 3 required deliverables (README, REPORT.md, /evidence/) are in place. Remaining items
   are documented as future work in REPORT.md §7, not silently missing.
 
+- **Stretch: tenant-override / cross-tenant reuse implemented concretely**, not left
+  design-only. Added a second target-app "tenant" (`TENANT=vendorB` env var) that renders the
+  search control as a `<button>` with a different label instead of `<input type=submit
+  value="Search">` — a realistic same-vendor-product, different-institution config
+  difference, chosen specifically so the base artifact's *existing* generic CSS fallback
+  (`input[type=submit]`, which survives a label-only rename) would still genuinely break, so
+  the override is actually necessary rather than coincidentally optional. Built
+  `applyTenantOverride(base, override)` (`src/artifact/tenant-override.ts`): merges a small
+  per-step target override onto a base `Artifact`, leaving everything else (schema, other
+  steps, checkpoint, allowlist) shared. Verified for real, three ways: (1) base artifact
+  unmodified against tenant B → `Result.failure` (locator resolution, both strategies miss);
+  (2) base artifact + `capabilities/tenant-overrides/vendorB.json` against tenant B →
+  `Result.success`; (3) base artifact unmodified against the base tenant → still succeeds,
+  unaffected. This is the brief's own stretch-goal language delivered literally: "one artifact
+  recorded on a base app being applied to a second, slightly different variant... with
+  per-variant overrides."
+- **Escalation wired into discovery, not just replay** (was listed as future work in
+  REPORT.md's original Cuts list, now done). `runDiscovery` takes the same opt-in
+  `DiscoveryOptions` shape as `ReplayOptions` (`enableEscalation`, default off). On any stuck
+  exit (timeout / no tool call / max-steps), if enabled, calls the same `escalate()` used by
+  the Replayer against the same live discovery browser session. If the human performs at
+  least one action, discovery returns `DiscoveryResult.success` with a summary noting human
+  resolution and the human's outputs merged in; otherwise falls back to the original `stuck`
+  result. **Found and fixed a real bug while verifying this**: `return stuckOrEscalate(...)`
+  inside a `try` block does not implicitly await the returned promise before the wrapping
+  `finally { adapter.close() }` runs — so the browser was being closed out from under the
+  in-progress escalation, crashing mid-run (`page.screenshot: Target page ... has been
+  closed`). Fixed by awaiting explicitly (`return await stuckOrEscalate(...)`) at all three
+  call sites. Verified for real after the fix: forced a stuck state (`AGENT_MAX_STEPS=1`),
+  escalated, performed the two remaining steps manually via the operator console, resumed,
+  discovery completed with the correct value and a full system/human evidence trail.
+  Regression-checked both without the flag (unchanged stuck behavior, confirms the fix didn't
+  just paper over the crash) and the Replayer's own escalation path (unaffected, since both
+  now share the same `escalate()` implementation).
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

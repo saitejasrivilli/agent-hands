@@ -4,11 +4,13 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V6 — complete.** All core requirements (Section 3) are real: discovery, artifact
-compilation, deterministic replay with error taxonomy, safety guardrails, and human-in-the-loop
-escalation with live-session handoff. See `REPORT.md` for the design write-up,
-`BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for design, and
-`DECISIONS.md` for the running decision log.
+Status: **V6+ — complete, plus two stretch goals.** All core requirements (Section 3) are
+real: discovery, artifact compilation, deterministic replay with error taxonomy, safety
+guardrails, and human-in-the-loop escalation with live-session handoff — with escalation now
+wired into discovery as well as replay. Plus a concrete, verified cross-tenant reuse demo
+(Section 4/8's stretch goal). See `REPORT.md` for the design write-up, `BUILD_PLAN.md` for the
+full versioned roadmap, `HLD.md` / `LLD.md` for design, and `DECISIONS.md` for the running
+decision log.
 
 ## Setup
 
@@ -125,6 +127,39 @@ interleaved `system`/`human` log showing exactly what the human did.
 Without `--escalate`, the same broken artifact just fails immediately (no server, no hang) —
 escalation is strictly opt-in.
 
+**8. Cross-tenant reuse — one artifact, two tenants, a small override (not a re-recording):**
+```bash
+# start a second target-app instance as "tenant B" (same vendor product, different config —
+# its search control is a differently-labeled <button> instead of <input type=submit>)
+PORT=4001 TENANT=vendorB npx tsx target-app/server.ts &
+
+# the base artifact, UNMODIFIED, genuinely fails against tenant B
+TARGET_URL="http://localhost:4001/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance.json --input '{"memberId":"12345"}'
+# -> { "kind": "failure", "observed": "No locator strategy resolved uniquely: ..." }
+
+# the SAME base artifact + a 6-line override succeeds against tenant B
+TARGET_URL="http://localhost:4001/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance.json \
+  --tenant-override capabilities/tenant-overrides/vendorB.json \
+  --input '{"memberId":"12345"}'
+# -> { "kind": "success", "outputs": { "balance": "4820.55 USD" } }
+```
+
+**9. Escalation from a stuck discovery run, not just a broken replay:**
+```bash
+# force discovery to hit max-steps quickly to demo escalation without waiting a full run
+AGENT_MAX_STEPS=1 node --env-file=.env node_modules/.bin/tsx src/cli.ts run-agent \
+  --goal "look up member 12345 and read their current savings balance" \
+  --target "http://localhost:4000/" \
+  --escalate --operator-port 4103
+# open http://localhost:4103, perform the remaining steps manually (click Search, then
+# extract the balance), click "Resume automation"
+```
+Expected: discovery completes with `"kind": "success"` and a summary noting it was
+`"Resolved via human escalation"`, with the automated step(s) and the human's manual
+actions both in the same evidence log.
+
 ## What's built so far
 
 **V0 — skeleton + deterministic replay**
@@ -202,6 +237,18 @@ escalation is strictly opt-in.
 - Verified for real, full loop: broken artifact → escalate → manual fix via the operator
   console → resume → `Result.success` using the human-provided value, with full evidence
   trail (`intervention.json` + interleaved system/human log + before/after screenshots).
+
+**Post-V6 stretch goals**
+- **Cross-tenant reuse via override** (`src/artifact/tenant-override.ts`): a base `Artifact`
+  plus a small per-step override merges into a tenant-specific artifact, sharing everything
+  else. Demonstrated against a genuinely different second target-app tenant, not a toy
+  example — verified the base artifact actually fails unmodified, actually succeeds with the
+  override, and the base tenant is unaffected either way.
+- **Escalation wired into discovery**, not just replay: `runDiscovery` takes the same opt-in
+  `enableEscalation` option as `replay`. On any stuck exit, escalates against the same live
+  discovery browser session; the human's actions get merged into the discovery outputs.
+  Found and fixed a real bug while verifying this (see DECISIONS.md): the stuck-path return
+  wasn't awaited before a `finally` block closed the browser, crashing mid-escalation.
 
 ## Known limitations (tracked, not accidental)
 - `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the

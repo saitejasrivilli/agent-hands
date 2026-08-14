@@ -1,0 +1,11 @@
+{"ts":"2026-08-14T20:49:38.861Z","actor":"system","event":"discovery_started","detail":{"goal":"look up member 12345 and read their current savings balance","targetUrl":"http://localhost:4000/"}}
+{"ts":"2026-08-14T20:49:39.422Z","actor":"agent","event":"observe","detail":{"url":"http://localhost:4000/"}}
+{"ts":"2026-08-14T20:49:40.579Z","actor":"agent","event":"decide","detail":{"tool":"type","args":{"role":"textbox","name":"Member ID","value":"12345","reasoning":"I need to enter the member ID 12345 into the textbox to look up the member's information"}}}
+{"ts":"2026-08-14T20:49:40.618Z","actor":"agent","event":"act_ok","detail":{"tool":"type"}}
+{"ts":"2026-08-14T20:49:40.619Z","actor":"system","event":"discovery_stuck","detail":{"reason":"max_steps_exceeded"}}
+{"ts":"2026-08-14T20:49:40.644Z","actor":"system","event":"intervention_raised","detail":{"capabilityId":"discovery:look up member 12345 and read their current savings balance","stepIndex":1,"reason":"max_steps_exceeded","screenshotPath":"evidence/discovery-1786740578861/screenshots/stuck.png"}}
+{"ts":"2026-08-14T20:49:54.400Z","actor":"human","event":"manual_action","detail":{"actionType":"click","role":"button","name":"Search"}}
+{"ts":"2026-08-14T20:49:55.442Z","actor":"human","event":"manual_action","detail":{"actionType":"extract","role":"cell","name":"4820.55 USD"}}
+{"ts":"2026-08-14T20:49:55.442Z","actor":"human","event":"manual_extract","detail":{"extractAs":"savings_balance","value":"4820.55 USD"}}
+{"ts":"2026-08-14T20:49:56.470Z","actor":"system","event":"control_resumed","detail":{"humanActionsCount":2}}
+{"ts":"2026-08-14T20:49:56.472Z","actor":"system","event":"escalation_resolved","detail":{"humanActionsCount":2}}

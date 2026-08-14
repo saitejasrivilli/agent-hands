@@ -3,6 +3,7 @@ import { EvidenceLogger } from "../evidence/logger.js";
 import { callAnthropicWithTools } from "./anthropic-client.js";
 import { SYSTEM_PROMPT, userPromptFor, AGENT_TOOLS } from "./prompts.js";
 import type { LocatorStrategy } from "../artifact/types.js";
+import { escalate } from "../escalation/manager.js";
 
 export interface TranscriptEntry {
   index: number;
@@ -18,7 +19,21 @@ const MODEL = process.env.AGENT_MODEL ?? "claude-haiku-4-5-20251001";
 const MAX_STEPS = Number(process.env.AGENT_MAX_STEPS ?? 8);
 const TIMEOUT_MS = Number(process.env.AGENT_TIMEOUT_MS ?? 120_000);
 
-export async function runDiscovery(goal: string, targetUrl: string, evidenceRoot: string): Promise<DiscoveryResult> {
+export interface DiscoveryOptions {
+  // Same opt-in pattern as Replayer (see replayer.ts ReplayOptions):
+  // default OFF so V1's already-verified automated behavior (stuck ->
+  // immediate DiscoveryResult.stuck) is unchanged unless requested.
+  enableEscalation?: boolean;
+  operatorPort?: number;
+  escalationTimeoutMs?: number;
+}
+
+export async function runDiscovery(
+  goal: string,
+  targetUrl: string,
+  evidenceRoot: string,
+  options: DiscoveryOptions = {}
+): Promise<DiscoveryResult> {
   const runId = `discovery-${Date.now()}`;
   const logger = new EvidenceLogger(evidenceRoot, runId);
   logger.log("system", "discovery_started", { goal, targetUrl });
@@ -29,11 +44,33 @@ export async function runDiscovery(goal: string, targetUrl: string, evidenceRoot
   const historyLines: string[] = [];
   const startedAt = Date.now();
 
+  // Shared by every "stuck" exit below — tries escalation first if enabled,
+  // falls back to the plain stuck result if the human doesn't act (or
+  // escalation is disabled), so behavior matches V1 exactly by default.
+  const stuckOrEscalate = async (reason: string): Promise<DiscoveryResult> => {
+    logger.log("system", "discovery_stuck", { reason });
+    if (!options.enableEscalation) {
+      return { kind: "stuck", transcript, reason, runId };
+    }
+    const snap = await adapter.snapshot(logger.dir, "stuck");
+    const escalation = await escalate(
+      adapter,
+      { capabilityId: `discovery:${goal}`, stepIndex: transcript.length, reason, screenshotPath: snap.screenshotPath },
+      logger,
+      { port: options.operatorPort, timeoutMs: options.escalationTimeoutMs }
+    );
+    if (escalation.humanActionsCount > 0) {
+      Object.assign(outputs, escalation.outputs);
+      logger.log("system", "escalation_resolved", { humanActionsCount: escalation.humanActionsCount });
+      return { kind: "success", transcript, outputs, summary: `Resolved via human escalation (${reason})`, runId };
+    }
+    return { kind: "stuck", transcript, reason, runId };
+  };
+
   try {
     for (let i = 0; i < MAX_STEPS; i++) {
       if (Date.now() - startedAt > TIMEOUT_MS) {
-        logger.log("system", "discovery_stuck", { reason: "timeout" });
-        return { kind: "stuck", transcript, reason: "timeout", runId };
+        return await stuckOrEscalate("timeout");
       }
 
       const state = await adapter.observe();
@@ -48,8 +85,7 @@ export async function runDiscovery(goal: string, targetUrl: string, evidenceRoot
       });
 
       if (!toolCall) {
-        logger.log("system", "discovery_stuck", { reason: "no_tool_call" });
-        return { kind: "stuck", transcript, reason: "model_returned_no_tool_call", runId };
+        return await stuckOrEscalate("model_returned_no_tool_call");
       }
 
       logger.log("agent", "decide", { tool: toolCall.name, args: toolCall.arguments });
@@ -92,8 +128,7 @@ export async function runDiscovery(goal: string, targetUrl: string, evidenceRoot
       });
     }
 
-    logger.log("system", "discovery_stuck", { reason: "max_steps" });
-    return { kind: "stuck", transcript, reason: "max_steps_exceeded", runId };
+    return await stuckOrEscalate("max_steps_exceeded");
   } finally {
     logger.writeJson("transcript.json", transcript);
     await adapter.close();

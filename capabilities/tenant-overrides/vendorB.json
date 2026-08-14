@@ -1,0 +1,12 @@
+{
+  "tenantId": "vendorB",
+  "description": "Northgate Credit Union's variant of the same vendor product renames the search button from 'Search' to 'Find Member'. Everything else (fields, table layout, balance display) is identical to the base tenant.",
+  "stepTargetOverrides": {
+    "1": {
+      "strategies": [
+        { "kind": "role", "value": "button", "meta": { "name": "Find Member" } },
+        { "kind": "cssPath", "value": "input[type=submit]" }
+      ]
+    }
+  }
+}

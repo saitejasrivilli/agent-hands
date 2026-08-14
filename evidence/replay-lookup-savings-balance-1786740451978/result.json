@@ -1,0 +1,7 @@
+{
+  "kind": "failure",
+  "step": 1,
+  "expected": "element resolvable via one of 2 strategies",
+  "observed": "No locator strategy resolved uniquely: [{\"kind\":\"role\",\"value\":\"button\",\"meta\":{\"name\":\"Search\"}},{\"kind\":\"cssPath\",\"value\":\"input[type=submit]\"}]",
+  "evidenceId": "replay-lookup-savings-balance-1786740451978"
+}

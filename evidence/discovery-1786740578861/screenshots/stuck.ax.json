@@ -1,0 +1,3 @@
+{
+  "ariaSnapshot": "- heading \"Member Services Console\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Member ID 12345\":\n      - cell \"Member ID\"\n      - cell \"12345\":\n        - textbox \"Member ID\": \"12345\"\n    - row \"Search\":\n      - cell \"Search\":\n        - button \"Search\""
+}

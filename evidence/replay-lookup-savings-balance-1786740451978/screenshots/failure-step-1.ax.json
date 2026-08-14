@@ -1,0 +1,3 @@
+{
+  "ariaSnapshot": "- heading \"Member Portal — Northgate Credit Union\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Member ID 12345\":\n      - cell \"Member ID\"\n      - cell \"12345\":\n        - textbox \"Member ID\": \"12345\"\n    - row \"Find Member\":\n      - cell \"Find Member\":\n        - button \"Find Member\""
+}

@@ -10,11 +10,33 @@ import { members, subAccounts, nextConfirmationNumber } from "./data.js";
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 
+// Multi-tenant stand-in (stretch goal, brief Section 3.7/8): a second
+// "tenant" running the same vendor product with different branding/config,
+// not a separate rebuild. Real institutions run the same underlying software
+// under different white-label configuration — here that's just a label
+// swap, but it's enough to prove an artifact recorded on the base tenant
+// needs a small override (not a re-recording) to work on a variant tenant.
+const TENANT = process.env.TENANT ?? "base";
+// vendorB renders the search control as a <button> instead of
+// <input type=submit> AND renames its label — a realistic vendor-config
+// difference (same underlying product, different rendering choice per
+// institution), chosen specifically so a generic tag-based CSS fallback
+// (input[type=submit]) doesn't survive the rename by accident, and an
+// override is genuinely required rather than being coincidentally optional.
+const TENANT_CONFIG: Record<string, { heading: string; searchButtonHtml: string }> = {
+  base: { heading: "Member Services Console", searchButtonHtml: `<input type="submit" value="Search" />` },
+  vendorB: {
+    heading: "Member Portal — Northgate Credit Union",
+    searchButtonHtml: `<button type="submit">Find Member</button>`,
+  },
+};
+const tenantConfig = TENANT_CONFIG[TENANT] ?? TENANT_CONFIG.base;
+
 const layout = (title: string, body: string) => `
 <html>
 <head><title>${title}</title></head>
 <body>
-<h2>Member Services Console</h2>
+<h2>${tenantConfig.heading}</h2>
 ${body}
 </body>
 </html>`;
@@ -31,7 +53,7 @@ app.get("/", (_req, res) => {
             <td><input type="text" id="memberIdInput" name="memberId" /></td>
           </tr>
           <tr>
-            <td colspan="2"><input type="submit" value="Search" /></td>
+            <td colspan="2">${tenantConfig.searchButtonHtml}</td>
           </tr>
         </table>
       </form>

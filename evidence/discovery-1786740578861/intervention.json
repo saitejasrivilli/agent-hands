@@ -1,0 +1,6 @@
+{
+  "capabilityId": "discovery:look up member 12345 and read their current savings balance",
+  "stepIndex": 1,
+  "reason": "max_steps_exceeded",
+  "screenshotPath": "evidence/discovery-1786740578861/screenshots/stuck.png"
+}
