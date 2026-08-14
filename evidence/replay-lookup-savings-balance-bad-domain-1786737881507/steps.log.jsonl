@@ -1,0 +1,3 @@
+{"ts":"2026-08-14T20:04:41.508Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-bad-domain","inputs":{"memberId":"12345"}}}
+{"ts":"2026-08-14T20:04:42.033Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T20:04:42.033Z","actor":"system","event":"guardrail_blocked","detail":{"index":0,"reason":"domain \"localhost\" is not in allowlistScope.domains [evil.example.com]"}}

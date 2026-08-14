@@ -2,6 +2,7 @@ import type { Artifact, Checkpoint, RecoveryRule, Result, Step } from "../artifa
 import { PlaywrightAdapter, LocatorResolutionError } from "../adapters/playwright-adapter.js";
 import { EvidenceLogger } from "../evidence/logger.js";
 import { resolveLocator } from "./locator-resolver.js";
+import { enforceGuardrails, GuardrailViolation } from "../guardrails/wrapper.js";
 
 // Known "expected business outcome" markers, checked after every step (not
 // just at the very end) — a not-found result can legitimately appear partway
@@ -120,9 +121,22 @@ export async function replay(
 
       logger.log("system", "step_start", { index: step.index, action: step.action });
       try {
+        enforceGuardrails(adapter, step, inputs, artifact.allowlistScope);
         await executeStep(adapter, step, inputs, outputs);
         logger.log("system", "step_ok", { index: step.index });
       } catch (err) {
+        if (err instanceof GuardrailViolation) {
+          logger.log("system", "guardrail_blocked", { index: step.index, reason: err.reason });
+          const result: Result = {
+            kind: "failure",
+            step: step.index,
+            expected: "action permitted by allowlist/risky-action policy",
+            observed: `blocked by guardrail: ${err.reason}`,
+            evidenceId: runId,
+          };
+          logger.writeResult(result);
+          return result;
+        }
         if (err instanceof LocatorResolutionError) {
           const snap = await adapter.snapshot(logger.dir, `failure-step-${step.index}`);
           logger.log("system", "step_failed", { index: step.index, reason: "locator_resolution", ...snap });

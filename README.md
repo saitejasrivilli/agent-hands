@@ -4,8 +4,8 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V3** (replay distinguishes success / business outcome / recoverable / hard failure —
-all four verified with real runs). See
+Status: **V4** (allowlist enforcement, risky-action gating, and recursive/value-pattern
+redaction all verified with real runs). See
 `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for design, and
 `DECISIONS.md` for the running decision log.
 
@@ -80,6 +80,27 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
 # -> { "kind": "businessOutcome", "code": "invalid_input", ... }
 ```
 
+**5. Safety guardrails — allowlist + risky-action confirmation:**
+```bash
+# risky step blocked without explicit confirmation
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance-risky-demo.json --input '{"memberId":"12345"}'
+# -> { "kind": "failure", "observed": "blocked by guardrail: step 1 ... requires explicit confirmation ..." }
+
+# same artifact, with confirmation — proceeds
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance-risky-demo.json --input '{"memberId":"12345","confirm":true}'
+# -> { "kind": "success", ... }
+```
+
+**6. Redaction — sensitive data never persists to evidence, even under an innocuous key:**
+```bash
+npx tsx scripts/redaction-demo.ts
+cat evidence/redaction-demo/steps.log.jsonl
+# an SSN-shaped value under a "note" field comes back "[REDACTED-SSN]";
+# an "accountToken" field comes back "[REDACTED]" by key-name match
+```
+
 ## What's built so far
 
 **V0 — skeleton + deterministic replay**
@@ -126,6 +147,21 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
 - Verified all three non-happy-path `Result` kinds with real replay runs (see demo path
   above), plus regression-checked V0's and V2's existing artifacts still replay correctly.
 
+**V4 — safety & guardrails**
+- `enforceGuardrails`: single choke point called before every step's action, checking domain
+  allowlist, action-type allowlist, and risky-action confirmation — independent of what the
+  artifact/LLM requested (defense in depth). A violation returns a distinct `Result.failure`
+  with a clear `"blocked by guardrail: ..."` reason, not a generic error.
+- `Step.risky` (optional, backward-compatible): a risky step is blocked unless the caller
+  passes `inputs.confirm === true`. Deliberately blunt — no partial confirmation, no scoring.
+- Redaction fixed and hardened: `writeResult`/`writeJson` used to bypass redaction entirely
+  (only `log()` was covered) — now all three go through the same recursive redaction pass.
+  Added value-pattern matching (SSN-shaped values) so sensitive data under an innocuous key
+  name still gets caught, not just fields whose name says "password"/"token"/etc.
+- Verified all three for real: domain violation blocked, risky step blocked-then-allowed with
+  confirmation, and a fake SSN/API-token redacted from persisted evidence (see demo path
+  above and `scripts/redaction-demo.ts`).
+
 ## Known limitations (tracked, not accidental)
 - `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
   Replayer's multi-strategy fallback is not used during discovery, only during replay.
@@ -135,6 +171,9 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
   time allows.
 - `retryStep` recovery action is a declared no-op (the step loop naturally retries on its next
   pass) — only `dismiss` and `reloadAndRetry` perform an explicit action.
+- `lookup-savings-balance-risky-demo.json` marks a harmless step risky purely to exercise the
+  gate mechanism — no real mutating/irreversible capability (e.g. submit-new-subaccount) has
+  been built yet to carry a risky flag naturally.
 
 ## Roadmap
-See `BUILD_PLAN.md`. Next: V4 — safety & guardrails (allowlist enforcement, redaction).
+See `BUILD_PLAN.md`. Next: V5 — escalation & handoff (human takes control of the live session).

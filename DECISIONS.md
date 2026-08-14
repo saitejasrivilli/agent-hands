@@ -137,6 +137,35 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   point in the sequence, not just a lucky pass). Also regression-checked V2's compiled
   artifact still replays correctly after the shared Replayer changes — no breakage.
 
+- **V4 guardrail wrapper**: single choke point (`enforceGuardrails`, called before every
+  step's action in the Replayer) checking domain allowlist, action-type allowlist, and
+  risky-action confirmation — independent of what the artifact/LLM requested, not trusted to
+  either (defense in depth per BEST_PRACTICES.md §7). A violation returns a distinct,
+  clearly-labeled `Result.failure` (`observed: "blocked by guardrail: ..."`) rather than being
+  swallowed into a generic locator/timeout error.
+- **Risky-action policy**: added an optional `Step.risky` flag (backward-compatible addition
+  to the "locked" V0 types — existing artifacts parse unchanged since it's optional). A risky
+  step is blocked unless the caller passes `inputs.confirm === true`. This is a blunt
+  mechanism deliberately: no partial/implicit confirmation, no risk-scoring — matches
+  BEST_PRACTICES.md §5's "handle the risky class conservatively" guidance. Real risky actions
+  in this domain would be mutating/irreversible ones (e.g. submitting the new-subaccount
+  form); the shipped demo (`lookup-savings-balance-risky-demo.json`) marks a harmless step
+  risky purely to exercise the gate mechanism honestly, and says so in its own description.
+- **Redaction made recursive + value-pattern based**: the V0-era redaction only checked
+  top-level key names on `log()` calls. V4 fixes two real gaps found while building this:
+  (1) `writeResult`/`writeJson` bypassed redaction entirely — fixed, now redacted like `log()`.
+  (2) redaction was shallow — a sensitive value nested inside an object (e.g. inside
+  `outputs`) wasn't touched. Now recursive, and adds an SSN-shaped value-pattern check
+  (`\d{3}-\d{2}-\d{4}`) so a sensitive value under an innocuous key name (e.g. a "note" field)
+  still gets redacted, not just fields whose name obviously says "ssn"/"password"/etc.
+- **Verified all three V4 mechanisms for real**: (1) domain-allowlist violation — an artifact
+  copy with `allowlistScope.domains: ["evil.example.com"]` correctly blocked against the real
+  localhost target, clear reason logged. (2) risky-action gate — blocked without
+  `inputs.confirm`, proceeded and succeeded with it. (3) redaction — a script logging a fake
+  SSN under a generic "note" key (both top-level and nested inside a result's `outputs`) came
+  back `[REDACTED-SSN]` in the persisted evidence file; a fake API token under `accountToken`
+  came back `[REDACTED]` by key-name match. See `scripts/redaction-demo.ts`.
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step

@@ -1,0 +1,7 @@
+{
+  "kind": "failure",
+  "step": 0,
+  "expected": "action permitted by allowlist/risky-action policy",
+  "observed": "blocked by guardrail: domain \"localhost\" is not in allowlistScope.domains [evil.example.com]",
+  "evidenceId": "replay-lookup-savings-balance-bad-domain-1786737881507"
+}

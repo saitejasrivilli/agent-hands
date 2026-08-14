@@ -1,0 +1,7 @@
+{
+  "kind": "success",
+  "outputs": {
+    "note": "SSN on file: [REDACTED-SSN]"
+  },
+  "evidenceId": "redaction-demo"
+}

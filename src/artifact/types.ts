@@ -21,6 +21,11 @@ export interface Step {
   extractAs?: string;
   timeoutMs: number;
   retry: { max: number; backoffMs: number };
+  // V4 addition (backward-compatible, optional — existing artifacts parse
+  // unchanged). Marks a mutating/irreversible step that requires explicit
+  // caller confirmation (inputs.confirm === true) before the Guardrail will
+  // allow it to execute. See BEST_PRACTICES.md §5 and DECISIONS.md.
+  risky?: boolean;
 }
 
 export interface Checkpoint {
