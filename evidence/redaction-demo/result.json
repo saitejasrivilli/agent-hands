@@ -1,7 +1,7 @@
 {
   "kind": "success",
   "outputs": {
-    "note": "SSN on file: [REDACTED-SSN]"
+    "note": "SSN on file: [REDACTED-SSN], card on file [REDACTED-CARD]"
   },
   "evidenceId": "redaction-demo"
 }

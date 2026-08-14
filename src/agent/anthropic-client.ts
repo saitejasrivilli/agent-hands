@@ -1,5 +1,6 @@
-// Minimal Anthropic Messages API client via fetch — mirrors openai-client.ts's
-// shape so the agent loop doesn't care which provider is behind it.
+// Minimal Anthropic Messages API client via fetch. Shape is intentionally
+// provider-agnostic (ChatResult/ToolCall) so the agent loop doesn't care
+// which LLM provider is behind it.
 
 export interface ToolCall {
   id: string;

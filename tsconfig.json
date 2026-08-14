@@ -9,5 +9,5 @@
     "outDir": "dist",
     "resolveJsonModule": true
   },
-  "include": ["src", "target-app"]
+  "include": ["src", "target-app", "tests", "scripts"]
 }

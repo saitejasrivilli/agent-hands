@@ -1,7 +1,0 @@
-{
-  "kind": "failure",
-  "step": 1,
-  "expected": "action permitted by allowlist/risky-action policy",
-  "observed": "blocked by guardrail: step 1 (click) is marked risky and requires explicit confirmation (inputs.confirm === true), none given",
-  "evidenceId": "replay-lookup-savings-balance-risky-demo-1786737892059"
-}

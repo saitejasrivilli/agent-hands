@@ -83,7 +83,11 @@ type Result = { kind: "success"; outputs; evidenceId }
   marker can appear mid-flow, and treating it as a crash is, per the brief's glossary, "the
   most common design mistake here." This was a real V0 bug, fixed in V3 and documented rather
   than hidden: the check originally ran only at the end, so not-found could hard-fail on an
-  unrelated later step first.
+  unrelated later step first. The marker list lives in its own policy module
+  (`business-outcomes.ts`, separate from the execution mechanism) and has two genuinely
+  distinct entries (`member_not_found`, `permission_denied`, backed by a real
+  restricted-member scenario in the target app) — proving it's an actual taxonomy, not one
+  hardcoded pattern dressed up as a design.
 - **Recoverable conditions** (`recoveryRules`) are checked before each step, bounded by
   `maxApplications`. Verified against a real dismissible interstitial added to the target app
   specifically to exercise this — not simulated.
@@ -153,18 +157,26 @@ artifact blocked against the real target with a clear labeled reason.
 
 **Risky/irreversible actions**: an optional `Step.risky` flag (additive, doesn't break
 anything already built) requires `inputs.confirm === true`. Deliberately blunt — no partial
-confirmation, no scoring. No real mutating capability was built to carry this flag naturally;
-the shipped demo marks a harmless step risky purely to exercise the gate, and says so.
+confirmation, no scoring. Backed by a real mutating capability
+(`capabilities/open-new-subaccount.json` — fills a form, submits, creates a sub-account,
+returns a confirmation number), not a harmless step marked risky just to exercise the gate:
+verified blocked without confirmation and succeeding (real confirmation number returned) with
+it, both against the actual submit step.
 
-**Redaction at the point of capture**, two layers (key-name + value-pattern), applied
-recursively to every persisted artifact. A real gap was found and fixed while building this:
-`writeResult`/`writeJson` originally bypassed redaction entirely. Verified with a script
-logging a fake SSN under an innocuous key, both top-level and nested — redacted either way.
+**Redaction at the point of capture** (`src/evidence/redaction-patterns.ts` — kept separate
+from the logger mechanism itself), key-name and value-pattern matching, applied recursively
+to every persisted artifact. Two real gaps were found and fixed while building this:
+(1) `writeResult`/`writeJson` originally bypassed redaction entirely; (2) while broadening the
+value-pattern set beyond the original single SSN regex, an early card-number pattern matched
+bare 13-19 digit runs — which would have redacted every `evidenceId` (a 13-digit
+`Date.now()` timestamp) as a false positive. Caught before shipping, fixed by requiring
+visible digit-grouping, with a regression test guarding it going forward.
 
-**Limits, honestly**: redaction pattern list is small and illustrative, not production-grade
-coverage. No separate approval record beyond the log entry for risky actions. Guardrails are
-enforced only in the Replayer's path, not the Agent Loop's — a discovery run has no artifact/
-allowlist yet to enforce against.
+**Limits, honestly**: redaction pattern list is broader now (SSN, card, email, phone, DOB,
+account/routing numbers) but still illustrative, not exhaustive PII coverage a production
+system would need. No separate approval record beyond the log entry for risky actions.
+Guardrails are enforced only in the Replayer's path, not the Agent Loop's — a discovery run
+has no artifact/allowlist yet to enforce against.
 
 ## 7. Cuts
 
@@ -176,27 +188,39 @@ allowlist yet to enforce against.
   requirement; declined deliberately, not defaulted into (see conversation record).
 - Discovery-time locator fallback chains — single role+name locator during discovery; the
   fallback chain is a compiler-time concern (V2), not duplicated in the Agent Loop.
-- Broader redaction rule set and a real risky-action approval record.
+- A real risky-action approval record beyond the log entry itself.
 - Route-canonicalization as a generic, reusable function (concrete tenant-override merging is
   implemented and verified — see §4 — but a general `/x/123 → /x/:id` regex-based
   canonicalizer wasn't built; the current override mechanism edits locators directly instead).
+- A fast unit-test layer for logic that doesn't need a real browser — the test suite (§below)
+  is integration-style throughout (real Playwright, real spawned target-app), the right level
+  for what this project needs to prove, but slower (~4s) than pure unit tests would be.
 
-**Already fixed/implemented post-write-up** (this section's own honesty list, then closed one
-by one, each independently verified rather than just claimed done):
+**Already fixed/implemented, each independently re-verified rather than just claimed done**
+(most of this list came from asking for a strict grading pass against this report's own
+claims, then actually closing what it found — not just noting it and moving on):
 1. The output-shape inconsistency in compiled artifacts — the derived fallback locator matched
-   a whole table row (label+value concatenated) instead of the value cell alone. Fixed by
-   scoping the fallback (`td:nth-child(2)`) in the compiler and existing capability files;
-   re-verified all 4 affected artifacts return consistent bare-value output.
+   a whole table row instead of the value cell alone. Fixed (`td:nth-child(2)` scoping) in the
+   compiler and existing capability files.
 2. Cross-tenant reuse via override, implemented concretely (§4), not left design-only.
 3. Escalation wired into discovery's stuck state, not just replay — found and fixed a real bug
-   in the process (a `finally { adapter.close() }` block was closing the browser out from
-   under an in-progress escalation because the stuck-path return wasn't awaited); verified
-   after the fix with a real stuck-then-resolved discovery run.
+   in the process (an unawaited stuck-path return let a `finally` block close the browser out
+   from under an in-progress escalation).
+4. Dead code removed (`openai-client.ts`, superseded by Anthropic in V1, never deleted).
+5. A real mutating capability (`open-new-subaccount.json`) built to back the risky-action
+   gate, replacing a fake harness that marked a harmless step risky just to exercise the gate.
+6. Business-outcome taxonomy split into its own policy module and given a genuine second,
+   distinct entry (`permission_denied`) backed by a real target-app scenario.
+7. Redaction patterns split into their own config module and broadened (card/email/phone/DOB/
+   account numbers) — catching a real false-positive bug in the process (an early card-number
+   pattern would have redacted every `evidenceId`), fixed with a regression test before it
+   shipped.
+8. An automated test suite added (`npm test`, 16 tests) — previously the single largest gap:
+   every verification in this project had been a manual CLI run.
 
 **Still next, in priority order:**
-1. Broaden redaction patterns; add a multi-run stability signal (replay N times, report
-   locator hit-rate) — the logging hook already exists.
-2. A general route-canonicalization function, beyond the current per-locator override.
+1. A general route-canonicalization function, beyond the current per-locator override.
+2. A fast unit-test layer alongside the integration suite.
 3. A short screen recording of the full loop (discovery → compile → replay → escalation) —
    explicitly optional per the brief; the written evidence trail already covers "prove it's
    real."

@@ -4,13 +4,25 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V6+ — complete, plus two stretch goals.** All core requirements (Section 3) are
-real: discovery, artifact compilation, deterministic replay with error taxonomy, safety
-guardrails, and human-in-the-loop escalation with live-session handoff — with escalation now
-wired into discovery as well as replay. Plus a concrete, verified cross-tenant reuse demo
-(Section 4/8's stretch goal). See `REPORT.md` for the design write-up, `BUILD_PLAN.md` for the
-full versioned roadmap, `HLD.md` / `LLD.md` for design, and `DECISIONS.md` for the running
-decision log.
+Status: **V8 — complete, hardened after a strict self-review.** All core requirements
+(Section 3) are real: discovery, artifact compilation, deterministic replay with error
+taxonomy, safety guardrails, and human-in-the-loop escalation with live-session handoff —
+wired into both discovery and replay. Plus a verified cross-tenant reuse demo (stretch goal),
+a real mutating capability backing the risky-action gate, and an automated test suite. See
+`REPORT.md` for the design write-up, `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md`
+/ `LLD.md` for design, and `DECISIONS.md` for the running decision log.
+
+## Automated tests
+
+```bash
+npm test
+```
+16 tests (Node's built-in test runner, no extra dependency), true integration tests against a
+real spawned target-app instance and real Playwright — covers all 3 `Result` kinds, both
+guardrail mechanisms (allowlist + risky-action gate against the real mutating capability),
+redaction (including a regression test for a false-positive bug found while broadening the
+pattern set), and the tenant-override merge. Self-contained: spawns/kills its own target-app
+processes on dedicated ports, cleans up its own evidence directories.
 
 ## Setup
 
@@ -83,17 +95,21 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
 # -> { "kind": "businessOutcome", "code": "invalid_input", ... }
 ```
 
-**5. Safety guardrails — allowlist + risky-action confirmation:**
+**5. Safety guardrails — allowlist + risky-action confirmation, on a REAL mutating capability:**
 ```bash
-# risky step blocked without explicit confirmation
+# open-new-subaccount actually submits a form that creates data (a real
+# mutating/irreversible action, not a fake harness) — its submit step is
+# marked risky and blocked without explicit confirmation
 TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
-  --artifact capabilities/lookup-savings-balance-risky-demo.json --input '{"memberId":"12345"}'
-# -> { "kind": "failure", "observed": "blocked by guardrail: step 1 ... requires explicit confirmation ..." }
+  --artifact capabilities/open-new-subaccount.json \
+  --input '{"memberId":"12345","initialDeposit":"500.00"}'
+# -> { "kind": "failure", "observed": "blocked by guardrail: step 4 ... requires explicit confirmation ..." }
 
-# same artifact, with confirmation — proceeds
+# same capability, with confirmation — proceeds, returns a real confirmation number
 TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
-  --artifact capabilities/lookup-savings-balance-risky-demo.json --input '{"memberId":"12345","confirm":true}'
-# -> { "kind": "success", ... }
+  --artifact capabilities/open-new-subaccount.json \
+  --input '{"memberId":"12345","initialDeposit":"500.00","confirm":true}'
+# -> { "kind": "success", "outputs": { "confirmationNumber": "SA-100001" } }
 ```
 
 **6. Redaction — sensitive data never persists to evidence, even under an innocuous key:**
@@ -250,22 +266,6 @@ actions both in the same evidence log.
   Found and fixed a real bug while verifying this (see DECISIONS.md): the stuck-path return
   wasn't awaited before a `finally` block closed the browser, crashing mid-escalation.
 
-## Known limitations (tracked, not accidental)
-- `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
-  Replayer's multi-strategy fallback is not used during discovery, only during replay.
-- `retryStep` recovery action is a declared no-op (the step loop naturally retries on its next
-  pass) — only `dismiss` and `reloadAndRetry` perform an explicit action.
-- `lookup-savings-balance-risky-demo.json` marks a harmless step risky purely to exercise the
-  gate mechanism — no real mutating/irreversible capability (e.g. submit-new-subaccount) has
-  been built yet to carry a risky flag naturally.
-- Operator console's manual-action form only supports `role`+`name` locator strategy (not the
-  full locator fallback chain) — sufficient to prove the handoff mechanism, but a real
-  operator UI would likely offer more targeting options.
-- Escalation currently only triggers on `LocatorResolutionError` during replay, not on
-  discovery getting stuck (max-steps/timeout) — the mechanism (`escalate()`) is
-  surface-agnostic and could be wired into the Agent Loop too, but wasn't required for V5's
-  definition of done.
-
 **V6 — write-up**
 - `REPORT.md`: the 7 required sections (Architecture, Artifact schema, Determinism & error
   handling, Heterogeneity & multi-tenant, Escalation & handoff, Safety, Cuts), drawn from the
@@ -278,6 +278,51 @@ actions both in the same evidence log.
   artifacts) and the existing hand-authored capability files (`td:nth-child(2)` scoping).
   Re-verified all 4 affected artifacts — consistent bare-value output regardless of which
   locator strategy resolves; business-outcome and escalation paths regression-checked.
+
+**V8 — hardening from a strict self-review** (asked to grade this project honestly against
+the brief's own weighted criteria, then fix what the review found — not just note it):
+- Removed dead code (`openai-client.ts`, superseded by Anthropic in V1, never deleted).
+- Built a real mutating capability (`open-new-subaccount.json` — fills a form, submits,
+  creates a sub-account, returns a confirmation number) so the risky-action gate protects an
+  actual use case instead of a fake harness marking a harmless step risky. Retired the old
+  fake `lookup-savings-balance-risky-demo.json`.
+- Business-outcome taxonomy split into its own policy module
+  (`src/replay/business-outcomes.ts`) and given a genuine second, distinct entry
+  (`permission_denied`, backed by a real restricted-member scenario in the target app) —
+  proves it's a taxonomy, not one hardcoded regex.
+- Redaction patterns split into their own config module
+  (`src/evidence/redaction-patterns.ts`) and broadened (card numbers, email, phone, DOB,
+  account/routing numbers, PIN — beyond the original SSN-only set). **Caught a real bug while
+  broadening it**: an early card-number pattern matched bare 13-19 digit runs, which would
+  have redacted every `evidenceId` (a 13-digit `Date.now()` timestamp) as a false positive —
+  fixed by requiring visible digit-grouping before shipping, with a regression test.
+- Operator console's manual-action form now supports `navigate`, not just `role`+`name`
+  locator-based actions — a human can now fix "wrong page" failures, not only "broken
+  locator on the right page" ones.
+- **Added an automated test suite** (`npm test`, 16 tests, Node's built-in test runner) — the
+  single biggest gap the self-review found: every prior verification in this project was a
+  manual CLI run. Real integration tests now cover all 3 `Result` kinds, both guardrail
+  mechanisms, redaction (including a regression test for the bug above), and the
+  tenant-override merge.
+
+## Known limitations (tracked, not accidental)
+- `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
+  Replayer's multi-strategy fallback is not used during discovery, only during replay.
+- `retryStep` recovery action is a declared no-op (the step loop naturally retries on its next
+  pass) — only `dismiss` and `reloadAndRetry` perform an explicit action.
+- `LocatorStrategy.kind` includes `axPath`/`coordinates` for future surface types (desktop),
+  but neither is implemented — the extension point exists in the type, not in working code.
+- Redaction pattern list, while broadened, is still illustrative rather than exhaustive PII
+  coverage a production system would need (see REPORT.md §6).
+- Escalation demo artifacts (both replay and discovery paths) are hand-crafted to fail on
+  purpose (a deliberately broken locator / an artificially low max-steps) so the mechanism is
+  demonstrable on demand — there's no evidence in this repo of escalation triggering from an
+  *organic* failure that wasn't engineered for the demo.
+- Test suite is integration-style (real Playwright against a real spawned target-app), which
+  is the right level for this system, but means the suite takes ~4s and needs Chromium
+  installed — there's no fast unit-test layer for logic that doesn't need a real browser
+  (e.g. `applyTenantOverride` is covered, but most locator/replay logic isn't unit-tested in
+  isolation from Playwright).
 
 ## Deliverables checklist (per the brief's Section 6)
 - `/README.md` — this file: setup, exact demo commands, what's built.

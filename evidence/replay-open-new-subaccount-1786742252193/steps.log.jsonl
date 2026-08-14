@@ -1,0 +1,11 @@
+{"ts":"2026-08-14T21:17:32.194Z","actor":"system","event":"replay_started","detail":{"capabilityId":"open-new-subaccount","inputs":{"memberId":"12345","initialDeposit":"500.00"}}}
+{"ts":"2026-08-14T21:17:32.721Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T21:17:32.789Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T21:17:32.792Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T21:17:32.841Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T21:17:32.859Z","actor":"system","event":"step_start","detail":{"index":2,"action":"click"}}
+{"ts":"2026-08-14T21:17:32.891Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-14T21:17:32.905Z","actor":"system","event":"step_start","detail":{"index":3,"action":"type"}}
+{"ts":"2026-08-14T21:17:32.908Z","actor":"system","event":"step_ok","detail":{"index":3}}
+{"ts":"2026-08-14T21:17:32.910Z","actor":"system","event":"step_start","detail":{"index":4,"action":"click"}}
+{"ts":"2026-08-14T21:17:32.910Z","actor":"system","event":"guardrail_blocked","detail":{"index":4,"reason":"step 4 (click) is marked risky and requires explicit confirmation (inputs.confirm === true), none given"}}

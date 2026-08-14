@@ -4,6 +4,7 @@ export interface Member {
   savingsBalance: number;
   currency: string;
   requiresInterstitial?: boolean;
+  restricted?: boolean;
 }
 
 export const members: Record<string, Member> = {
@@ -12,6 +13,10 @@ export const members: Record<string, Member> = {
   // Deliberately exercises a recoverable runtime condition (session-expiring-style
   // interstitial) for V3's error-taxonomy testing — see BUILD_PLAN.md V3.
   "55555": { id: "55555", name: "Priya Anand", savingsBalance: 950.0, currency: "USD", requiresInterstitial: true },
+  // Deliberately exercises a second, distinct business-outcome case
+  // (permission denied, not "not found") — proves the taxonomy is a real
+  // set of policies, not one hardcoded pattern. See business-outcomes.ts.
+  "40404": { id: "40404", name: "Restricted Member", savingsBalance: 0, currency: "USD", restricted: true },
 };
 
 export const subAccounts: Array<{

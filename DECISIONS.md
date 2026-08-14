@@ -249,6 +249,45 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   just paper over the crash) and the Replayer's own escalation path (unaffected, since both
   now share the same `escalate()` implementation).
 
+- **V8 — strict self-review, then fixed every finding rather than just noting it.** Asked for
+  a grading pass against the brief's own weighted eval criteria; every "weak point" the review
+  surfaced was closed and independently re-verified, not just annotated:
+  - Removed dead code: `src/agent/openai-client.ts` (superseded by Anthropic in V1, never
+    deleted — updated the one stray comment in `anthropic-client.ts` that referenced it).
+  - Built a real mutating capability, `capabilities/open-new-subaccount.json` (fills the
+    account-type/deposit form, submits, creates a sub-account, returns a confirmation
+    number). Its submit step carries `risky: true` for real, not as a harness. Retired the
+    old `lookup-savings-balance-risky-demo.json` (harmless step marked risky purely to
+    exercise the gate). Verified blocked without confirmation and succeeding — with a real
+    confirmation number (`SA-100001`) — with it.
+  - Split business-outcome markers into `src/replay/business-outcomes.ts` (policy, separate
+    from the replay mechanism) and added a genuinely distinct second entry
+    (`permission_denied`), backed by a real restricted-member (`40404`) scenario added to the
+    target app — proves the taxonomy is a real set of policies, not one regex.
+  - Split redaction patterns into `src/evidence/redaction-patterns.ts` (config, separate from
+    the logger mechanism) and broadened value-pattern coverage (card, email, phone) plus
+    key-name coverage (DOB, account/routing numbers, PIN). **Caught a real bug before
+    shipping**: an initial card-number pattern (`\b(?:\d[ -]?){13,19}\b`) matched bare
+    13-19-digit runs — which would have redacted every `evidenceId` (a 13-digit `Date.now()`
+    timestamp) as a false positive. Verified the collision directly (`'1786737312169'.match(...)`
+    returned a match), then fixed by requiring visible digit-grouping
+    (`\d{4}[ -]\d{4}[ -]\d{4}(?:[ -]?\d{1,4})?`), re-verified the fix doesn't match the
+    evidenceId shape but still matches formatted card numbers, and added a regression test.
+  - Broadened the operator console's manual-action form to support `navigate`, not just
+    `role`+`name` locator-based actions — addresses the "can only fix locator failures, not
+    wrong-page failures" limitation.
+  - **Added an automated test suite** (`tests/`, run via `npm test` — Node's built-in test
+    runner + `tsx`, no new dependency): 16 tests, genuine integration tests (real spawned
+    target-app child process per suite, real Playwright), covering all 3 `Result` kinds
+    (including both business-outcome codes), both guardrail mechanisms (allowlist + the real
+    risky-action gate), redaction (4 value patterns + key-name match + the evidenceId
+    false-positive regression), and the tenant-override merge (fast, no browser needed for
+    this one). Confirmed self-contained: no leftover evidence dirs or orphaned processes
+    after a full run.
+  - This was, by the review's own assessment, the single biggest gap: every prior
+    verification in the project (V0-V7) was a manual CLI run reproduced by hand: correct, but
+    with nothing to catch a future regression except remembering to re-run things.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

@@ -67,10 +67,14 @@ export async function escalate(
             <option value="click">click</option>
             <option value="type">type</option>
             <option value="extract">extract</option>
+            <option value="navigate">navigate</option>
           </select>
-          role: <input name="role" /> name: <input name="name" /> value: <input name="value" /> extractAs: <input name="extractAs" />
+          role: <input name="role" /> name: <input name="name" /> value/url: <input name="value" /> extractAs: <input name="extractAs" />
           <input type="submit" value="Run action" />
         </form>
+        <p style="font-size:0.85em;color:#555">navigate uses the value/url field as the destination URL; role/name are
+        ignored for that action type. This covers failures caused by being on the wrong page,
+        not just a broken locator on the right page.</p>
         <h3>Done fixing it manually?</h3>
         <form method="POST" action="/resume"><input type="submit" value="Resume automation" /></form>
       </body></html>
@@ -79,7 +83,8 @@ export async function escalate(
 
   app.post("/action", async (req, res) => {
     const { actionType, role, name, value, extractAs } = req.body;
-    const target: LocatorStrategy[] = [{ kind: "role", value: role, meta: { name } }];
+    const target: LocatorStrategy[] | undefined =
+      actionType === "navigate" ? undefined : [{ kind: "role", value: role, meta: { name } }];
     try {
       const result = await adapter.act({ type: actionType, target, value });
       humanActionsCount++;

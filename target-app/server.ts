@@ -76,6 +76,18 @@ app.get("/member", (req, res) => {
     return;
   }
 
+  // Deliberate second, distinct business outcome — permission denied, not
+  // "not found". A real caller needs to be able to tell these apart.
+  if (member.restricted) {
+    res.status(403).send(
+      layout(
+        "Access Denied",
+        `<p>Access denied: you do not have permission to view member "${memberId}".</p><p><a href="/">Back to search</a></p>`
+      )
+    );
+    return;
+  }
+
   // Deliberate recoverable runtime condition: a dismissible "session expiring"
   // style interstitial that legitimately appears sometimes in real enterprise
   // apps (Section 1). ?ack=1 marks it dismissed for this request.

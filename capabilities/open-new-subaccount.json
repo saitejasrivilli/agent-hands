@@ -1,0 +1,96 @@
+{
+  "capabilityId": "open-new-subaccount",
+  "version": 1,
+  "description": "Open a new sub-account for an existing member with an initial deposit, and return the confirmation number. This is the project's real mutating/irreversible capability — the submit step is marked risky and requires explicit caller confirmation.",
+  "inputSchema": { "memberId": "string", "initialDeposit": "string" },
+  "outputSchema": { "confirmationNumber": "string" },
+  "steps": [
+    {
+      "index": 0,
+      "action": "type",
+      "target": {
+        "strategies": [
+          { "kind": "role", "value": "textbox", "meta": { "name": "Member ID" } },
+          { "kind": "cssPath", "value": "#memberIdInput" }
+        ]
+      },
+      "valueTemplate": "{{memberId}}",
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 }
+    },
+    {
+      "index": 1,
+      "action": "click",
+      "target": {
+        "strategies": [
+          { "kind": "role", "value": "button", "meta": { "name": "Search" } },
+          { "kind": "cssPath", "value": "input[type=submit]" }
+        ]
+      },
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 }
+    },
+    {
+      "index": 2,
+      "action": "click",
+      "target": {
+        "strategies": [
+          { "kind": "role", "value": "link", "meta": { "name": "Open a new sub-account for this member" } }
+        ]
+      },
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 }
+    },
+    {
+      "index": 3,
+      "action": "type",
+      "target": {
+        "strategies": [
+          { "kind": "role", "value": "textbox", "meta": { "name": "Initial Deposit" } },
+          { "kind": "cssPath", "value": "#depositInput" }
+        ]
+      },
+      "valueTemplate": "{{initialDeposit}}",
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 }
+    },
+    {
+      "index": 4,
+      "action": "click",
+      "target": {
+        "strategies": [
+          { "kind": "role", "value": "button", "meta": { "name": "Continue" } },
+          { "kind": "cssPath", "value": "input[type=submit]" }
+        ]
+      },
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 },
+      "risky": true
+    },
+    {
+      "index": 5,
+      "action": "extract",
+      "target": {
+        "strategies": [
+          { "kind": "cssPath", "value": "#confirmationNumber" }
+        ]
+      },
+      "extractAs": "confirmationNumber",
+      "timeoutMs": 5000,
+      "retry": { "max": 1, "backoffMs": 200 }
+    }
+  ],
+  "successCondition": {
+    "kind": "elementText",
+    "target": { "strategies": [{ "kind": "cssPath", "value": "#confirmationNumber" }] }
+  },
+  "recoveryRules": [],
+  "allowlistScope": {
+    "domains": ["localhost"],
+    "actions": ["click", "type", "extract"]
+  },
+  "createdFrom": {
+    "discoveryRunId": "hand-authored-v8",
+    "timestamp": "2026-08-14T00:00:00.000Z"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "kind": "businessOutcome",
+  "code": "permission_denied",
+  "detail": "target app reported the caller lacks permission for this member/action",
+  "evidenceId": "replay-lookup-savings-balance-1786742264807"
+}

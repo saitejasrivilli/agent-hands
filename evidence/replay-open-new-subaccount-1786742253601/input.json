@@ -1,4 +1,5 @@
 {
   "memberId": "12345",
+  "initialDeposit": "500.00",
   "confirm": true
 }

@@ -1,0 +1,7 @@
+{
+  "kind": "failure",
+  "step": 4,
+  "expected": "action permitted by allowlist/risky-action policy",
+  "observed": "blocked by guardrail: step 4 (click) is marked risky and requires explicit confirmation (inputs.confirm === true), none given",
+  "evidenceId": "replay-open-new-subaccount-1786742252193"
+}

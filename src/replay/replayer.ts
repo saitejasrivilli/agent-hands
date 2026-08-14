@@ -4,15 +4,14 @@ import { EvidenceLogger } from "../evidence/logger.js";
 import { resolveLocator } from "./locator-resolver.js";
 import { enforceGuardrails, GuardrailViolation } from "../guardrails/wrapper.js";
 import { escalate } from "../escalation/manager.js";
+import { BUSINESS_OUTCOME_MARKERS } from "./business-outcomes.js";
 
-// Known "expected business outcome" markers, checked after every step (not
-// just at the very end) — a not-found result can legitimately appear partway
-// through a flow, and treating it as a crash rather than a typed outcome is
-// "the most common design mistake" per the brief's own glossary.
-const BUSINESS_OUTCOME_MARKERS: Array<{ pattern: RegExp; code: string; detail: string }> = [
-  { pattern: /no member found/i, code: "member_not_found", detail: "target app reported no matching member" },
-];
-
+// Business outcomes are checked after every step (not just at the very end)
+// — a not-found (or permission-denied, etc.) result can legitimately appear
+// partway through a flow, and treating it as a crash rather than a typed
+// outcome is "the most common design mistake" per the brief's own glossary.
+// The marker list itself lives in business-outcomes.ts (policy, not
+// mechanism) — see that file to add a new expected outcome.
 async function checkBusinessOutcome(adapter: PlaywrightAdapter): Promise<{ code: string; detail: string } | null> {
   const state = await adapter.observe();
   for (const marker of BUSINESS_OUTCOME_MARKERS) {

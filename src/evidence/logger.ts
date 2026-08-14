@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { SENSITIVE_KEY_PATTERN, VALUE_PATTERNS } from "./redaction-patterns.js";
 
 // Every run (discovery, replay, escalation) gets its own evidence dir with a
 // structured JSONL step log + a result.json, so both humans and later tooling
@@ -14,16 +15,11 @@ export interface LogEntry {
 }
 
 // Redaction applied at the point of capture (BEST_PRACTICES.md §6), before
-// anything touches disk — never redacted-after-the-fact. Two layers, since
-// either one alone misses real cases:
-//  - key-name match: catches known-sensitive fields regardless of value shape
-//  - value-pattern match: catches sensitive-shaped values under an innocuous
-//    key name (e.g. an SSN accidentally captured under a generic "note" key)
-const SENSITIVE_KEY_PATTERN = /ssn|password|token|secret|credential|apikey|social.?security/i;
-const SSN_VALUE_PATTERN = /\b\d{3}-\d{2}-\d{4}\b/g;
-
+// anything touches disk — never redacted-after-the-fact. See
+// redaction-patterns.ts for what counts as sensitive; this file only
+// implements how the redaction pass is applied.
 function redactString(value: string): string {
-  return value.replace(SSN_VALUE_PATTERN, "[REDACTED-SSN]");
+  return VALUE_PATTERNS.reduce((acc, p) => acc.replace(p.pattern, p.replacement), value);
 }
 
 // Recursive so nested objects/arrays (e.g. an artifact's `outputs`, or a

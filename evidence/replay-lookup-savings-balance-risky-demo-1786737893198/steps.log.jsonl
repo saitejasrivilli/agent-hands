@@ -1,8 +1,0 @@
-{"ts":"2026-08-14T20:04:53.198Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-risky-demo","inputs":{"memberId":"12345","confirm":true}}}
-{"ts":"2026-08-14T20:04:53.344Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
-{"ts":"2026-08-14T20:04:53.358Z","actor":"system","event":"step_ok","detail":{"index":0}}
-{"ts":"2026-08-14T20:04:53.361Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
-{"ts":"2026-08-14T20:04:53.416Z","actor":"system","event":"step_ok","detail":{"index":1}}
-{"ts":"2026-08-14T20:04:53.430Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
-{"ts":"2026-08-14T20:04:53.432Z","actor":"system","event":"step_ok","detail":{"index":2}}
-{"ts":"2026-08-14T20:04:53.435Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"Savings Balance4820.55 USD"}}}

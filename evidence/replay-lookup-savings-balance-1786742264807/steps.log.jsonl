@@ -1,0 +1,6 @@
+{"ts":"2026-08-14T21:17:44.808Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance","inputs":{"memberId":"40404"}}}
+{"ts":"2026-08-14T21:17:45.352Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T21:17:45.379Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T21:17:45.382Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T21:17:45.424Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T21:17:45.438Z","actor":"system","event":"business_outcome","detail":{"code":"permission_denied","detail":"target app reported the caller lacks permission for this member/action"}}

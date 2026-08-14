@@ -1,1 +1,1 @@
-{"ts":"2026-08-14T20:05:08.148Z","actor":"system","event":"test_event","detail":{"note":"customer provided SSN [REDACTED-SSN] during verification call","accountToken":"[REDACTED]","memberId":"12345"}}
+{"ts":"2026-08-14T21:18:13.664Z","actor":"system","event":"test_event","detail":{"note":"customer provided SSN [REDACTED-SSN], card [REDACTED-CARD], contact [REDACTED-EMAIL] or [REDACTED-PHONE]","accountToken":"[REDACTED]","memberId":"12345"}}
