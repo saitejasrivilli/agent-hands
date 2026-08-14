@@ -3,6 +3,7 @@ import { PlaywrightAdapter, LocatorResolutionError } from "../adapters/playwrigh
 import { EvidenceLogger } from "../evidence/logger.js";
 import { resolveLocator } from "./locator-resolver.js";
 import { enforceGuardrails, GuardrailViolation } from "../guardrails/wrapper.js";
+import { escalate } from "../escalation/manager.js";
 
 // Known "expected business outcome" markers, checked after every step (not
 // just at the very end) — a not-found result can legitimately appear partway
@@ -78,11 +79,21 @@ function validateInputs(artifact: Artifact, inputs: Record<string, unknown>): st
   return null;
 }
 
+export interface ReplayOptions {
+  // Escalation is opt-in: default OFF so V0-V4's already-verified automated
+  // behavior (hard failure -> immediate Result.failure) stays unchanged
+  // unless a caller explicitly wants a human-in-the-loop run.
+  enableEscalation?: boolean;
+  operatorPort?: number;
+  escalationTimeoutMs?: number;
+}
+
 export async function replay(
   artifact: Artifact,
   inputs: Record<string, unknown>,
   startUrl: string,
-  evidenceRoot: string
+  evidenceRoot: string,
+  options: ReplayOptions = {}
 ): Promise<Result> {
   const runId = `replay-${artifact.capabilityId}-${Date.now()}`;
   const logger = new EvidenceLogger(evidenceRoot, runId);
@@ -100,6 +111,7 @@ export async function replay(
   const adapter = await PlaywrightAdapter.launch(startUrl);
   const outputs: Record<string, unknown> = {};
   const recoveriesApplied = new Map<number, number>();
+  let escalatedOnceForStep = -1;
 
   try {
     for (const step of artifact.steps) {
@@ -140,6 +152,32 @@ export async function replay(
         if (err instanceof LocatorResolutionError) {
           const snap = await adapter.snapshot(logger.dir, `failure-step-${step.index}`);
           logger.log("system", "step_failed", { index: step.index, reason: "locator_resolution", ...snap });
+
+          if (options.enableEscalation && escalatedOnceForStep !== step.index) {
+            escalatedOnceForStep = step.index;
+            const escalation = await escalate(
+              adapter,
+              {
+                capabilityId: artifact.capabilityId,
+                stepIndex: step.index,
+                reason: `locator resolution failed: ${err.message}`,
+                screenshotPath: snap.screenshotPath,
+              },
+              logger,
+              { port: options.operatorPort, timeoutMs: options.escalationTimeoutMs }
+            );
+            Object.assign(outputs, escalation.outputs);
+            if (escalation.humanActionsCount > 0) {
+              // Human performed the step manually — trust their outcome and
+              // move on to the next step, rather than blindly retrying the
+              // same (already-proven-broken) locator.
+              logger.log("system", "escalation_resolved", { humanActionsCount: escalation.humanActionsCount });
+              continue;
+            }
+            // No manual action taken (e.g. timed out) — fall through to a
+            // real, clearly-labeled failure below.
+          }
+
           const result: Result = {
             kind: "failure",
             step: step.index,

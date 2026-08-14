@@ -1,0 +1,112 @@
+{
+  "capabilityId": "lookup-savings-balance-escalation-demo",
+  "version": 1,
+  "description": "Demo artifact for V5: extract step has a deliberately broken locator (guaranteed to fail) to exercise the escalation/handoff mechanism for real.",
+  "inputSchema": {
+    "memberId": "string"
+  },
+  "outputSchema": {
+    "balance": "string"
+  },
+  "steps": [
+    {
+      "index": 0,
+      "action": "type",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "textbox",
+            "meta": {
+              "name": "Member ID"
+            }
+          },
+          {
+            "kind": "cssPath",
+            "value": "#memberIdInput"
+          }
+        ]
+      },
+      "valueTemplate": "{{memberId}}",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    },
+    {
+      "index": 1,
+      "action": "click",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "button",
+            "meta": {
+              "name": "Search"
+            }
+          },
+          {
+            "kind": "cssPath",
+            "value": "input[type=submit]"
+          }
+        ]
+      },
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    },
+    {
+      "index": 2,
+      "action": "extract",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "cell",
+            "meta": {
+              "name": "THIS_LABEL_DOES_NOT_EXIST"
+            }
+          }
+        ]
+      },
+      "extractAs": "balance",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    }
+  ],
+  "successCondition": {
+    "kind": "elementText",
+    "target": {
+      "strategies": [
+        {
+          "kind": "text",
+          "value": "Savings Balance"
+        }
+      ]
+    },
+    "expected": "Savings Balance"
+  },
+  "recoveryRules": [],
+  "allowlistScope": {
+    "domains": [
+      "localhost"
+    ],
+    "actions": [
+      "click",
+      "type",
+      "navigate",
+      "waitFor",
+      "extract"
+    ]
+  },
+  "createdFrom": {
+    "discoveryRunId": "hand-authored-v0",
+    "timestamp": "2026-08-14T00:00:00.000Z"
+  }
+}

@@ -1,0 +1,13 @@
+{"ts":"2026-08-14T20:14:04.059Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-escalation-demo","inputs":{"memberId":"12345"}}}
+{"ts":"2026-08-14T20:14:04.623Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T20:14:04.679Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T20:14:04.682Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T20:14:04.734Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T20:14:04.749Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-14T20:14:04.782Z","actor":"system","event":"step_failed","detail":{"index":2,"reason":"locator_resolution","screenshotPath":"evidence/replay-lookup-savings-balance-escalation-demo-1786738444058/screenshots/failure-step-2.png","axTreePath":"evidence/replay-lookup-savings-balance-escalation-demo-1786738444058/screenshots/failure-step-2.ax.json"}}
+{"ts":"2026-08-14T20:14:04.783Z","actor":"system","event":"intervention_raised","detail":{"capabilityId":"lookup-savings-balance-escalation-demo","stepIndex":2,"reason":"locator resolution failed: No locator strategy resolved uniquely: [{\"kind\":\"role\",\"value\":\"cell\",\"meta\":{\"name\":\"THIS_LABEL_DOES_NOT_EXIST\"}}]","screenshotPath":"evidence/replay-lookup-savings-balance-escalation-demo-1786738444058/screenshots/failure-step-2.png"}}
+{"ts":"2026-08-14T20:14:18.766Z","actor":"human","event":"manual_action","detail":{"actionType":"extract","role":"cell","name":"4820.55 USD"}}
+{"ts":"2026-08-14T20:14:18.767Z","actor":"human","event":"manual_extract","detail":{"extractAs":"balance","value":"4820.55 USD"}}
+{"ts":"2026-08-14T20:14:22.748Z","actor":"system","event":"control_resumed","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-14T20:14:22.749Z","actor":"system","event":"escalation_resolved","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-14T20:14:22.753Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"4820.55 USD"}}}

@@ -4,8 +4,9 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V4** (allowlist enforcement, risky-action gating, and recursive/value-pattern
-redaction all verified with real runs). See
+Status: **V5** (all core requirements from the brief's Section 3 are now real: discovery,
+artifact compilation, deterministic replay with error taxonomy, safety guardrails, and
+human-in-the-loop escalation with live-session handoff). See
 `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for design, and
 `DECISIONS.md` for the running decision log.
 
@@ -101,6 +102,29 @@ cat evidence/redaction-demo/steps.log.jsonl
 # an "accountToken" field comes back "[REDACTED]" by key-name match
 ```
 
+**7. Escalation & handoff — human takes over the SAME live session, then hands back:**
+```bash
+# terminal A — start a replay against an artifact with a deliberately broken
+# locator, with escalation enabled
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance-escalation-demo.json \
+  --input '{"memberId":"12345"}' \
+  --escalate --operator-port 4100
+
+# it will block and print:
+#   Operator console listening on http://localhost:4100 (waiting for human)
+# open that URL in a browser — you'll see the live screenshot, the exact
+# reason it's stuck, and a form to perform one manual action, e.g.:
+#   actionType=extract, role=cell, name="4820.55 USD", extractAs=balance
+# then click "Resume automation"
+```
+Expected: the replay (terminal A) completes with `"kind": "success"` using the value the
+human just extracted, and `/evidence/replay-<id>/` contains `intervention.json` plus an
+interleaved `system`/`human` log showing exactly what the human did.
+
+Without `--escalate`, the same broken artifact just fails immediately (no server, no hang) —
+escalation is strictly opt-in.
+
 ## What's built so far
 
 **V0 — skeleton + deterministic replay**
@@ -162,6 +186,23 @@ cat evidence/redaction-demo/steps.log.jsonl
   confirmation, and a fake SSN/API-token redacted from persisted evidence (see demo path
   above and `scripts/redaction-demo.ts`).
 
+**V5 — escalation & handoff**
+- On a hard failure (locator resolution), if `--escalate` is passed, the Replayer raises an
+  `InterventionRequest` and starts a small local operator console bound to the SAME
+  `PlaywrightAdapter`/`Page` the paused replay was using — the human operates the live
+  session, not a fresh one.
+- Operator console (bare/mock per the brief's own scope note): shows the live screenshot +
+  exact stuck reason, exposes a manual-action form, and a "Resume" button. Human actions are
+  logged in the same structured format as automated steps (`actor: "human"`).
+- Escalation is opt-in (`--escalate`, default off) — V0-V4's verified automated behavior is
+  completely unchanged without it; confirmed by regression test (same broken artifact fails
+  immediately, no hang, when the flag isn't passed).
+- On resume, replay continues at the next step (trusts the human completed the failed step's
+  intent manually) rather than blindly retrying the same broken locator.
+- Verified for real, full loop: broken artifact → escalate → manual fix via the operator
+  console → resume → `Result.success` using the human-provided value, with full evidence
+  trail (`intervention.json` + interleaved system/human log + before/after screenshots).
+
 ## Known limitations (tracked, not accidental)
 - `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
   Replayer's multi-strategy fallback is not used during discovery, only during replay.
@@ -174,6 +215,14 @@ cat evidence/redaction-demo/steps.log.jsonl
 - `lookup-savings-balance-risky-demo.json` marks a harmless step risky purely to exercise the
   gate mechanism — no real mutating/irreversible capability (e.g. submit-new-subaccount) has
   been built yet to carry a risky flag naturally.
+- Operator console's manual-action form only supports `role`+`name` locator strategy (not the
+  full locator fallback chain) — sufficient to prove the handoff mechanism, but a real
+  operator UI would likely offer more targeting options.
+- Escalation currently only triggers on `LocatorResolutionError` during replay, not on
+  discovery getting stuck (max-steps/timeout) — the mechanism (`escalate()`) is
+  surface-agnostic and could be wired into the Agent Loop too, but wasn't required for V5's
+  definition of done.
 
 ## Roadmap
-See `BUILD_PLAN.md`. Next: V5 — escalation & handoff (human takes control of the live session).
+See `BUILD_PLAN.md`. Next: V6 — REPORT.md write-up + design-only heterogeneity/multi-tenant
+sections (the remaining required deliverables).

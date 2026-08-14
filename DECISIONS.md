@@ -166,6 +166,40 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   back `[REDACTED-SSN]` in the persisted evidence file; a fake API token under `accountToken`
   came back `[REDACTED]` by key-name match. See `scripts/redaction-demo.ts`.
 
+- **V5 escalation/handoff mechanism**: on a `LocatorResolutionError`, if `--escalate` is
+  passed, the Replayer raises an `InterventionRequest` (capability, step index, reason,
+  screenshot) and starts a small local HTTP server (`src/escalation/manager.ts`) bound to the
+  SAME `PlaywrightAdapter`/`Page` instance the paused replay was using — the human operates
+  the live session, not a fresh one, satisfying the brief's explicit requirement. The
+  operator page (bare/mock per Section 3.6's scope note) shows the live screenshot + context
+  and exposes a manual-action form (role/name/value/extractAs) plus a "Resume" button. Human
+  actions are logged via the same `EvidenceLogger` in the same format as automated steps
+  (`actor: "human"` vs `"system"`), preserving one unified audit trail across the handoff.
+- **Escalation is opt-in** (`enableEscalation` option, default `false`): V0-V4's already-
+  verified automated behavior (hard failure → immediate `Result.failure`) is completely
+  unchanged unless a caller explicitly passes `--escalate`. Verified: the same broken artifact
+  fails immediately (no server started, no hang) without the flag, and escalates correctly
+  with it — confirmed by regression-testing both paths.
+- **Control-transfer model**: rather than a separately-checked `controlState` flag polled by
+  concurrent automation code, the replay loop itself is structurally blocked (an `await` on
+  the resume signal) for the whole duration of human control — Node's single-threaded event
+  loop means there is no concurrent automation action possible while that await is pending.
+  Documented as a deliberate simplification: it achieves the same guarantee (automation
+  cannot act while a human has control) with less code than an explicitly-polled flag, given
+  this system has no background workers. A multi-worker design would need the explicit flag.
+- **On resume, replay continues at the NEXT step, not a retry of the failed one**: the human
+  is assumed to have completed the failed step's intent manually (e.g. performed the extract
+  themselves) rather than "unstuck" the exact same broken locator for an automated retry —
+  matches real operator behavior (a human fixes the outcome, not the selector).
+- **Verified for real, full loop**: built a deliberately-broken artifact (extract step's only
+  locator strategy guaranteed to never match), ran replay with `--escalate`, confirmed the
+  operator console rendered the live screenshot + exact failure reason, POSTed a manual
+  extract action against the SAME session (simulating a human clicking the form — a real
+  person could use the identical page instead of curl), confirmed the control-state update,
+  resumed, and the run completed with `Result.success` using the human-provided value. Full
+  evidence trail (`intervention.json` + interleaved system/human log entries + before/after
+  screenshots) inspected and confirmed correct.
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step
