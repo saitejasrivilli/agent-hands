@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { replay } from "./replay/replayer.js";
 import { runDiscovery } from "./agent/loop.js";
+import { compileFromTranscriptFile } from "./artifact/compiler.js";
 import type { Artifact } from "./artifact/types.js";
 
 const TARGET_URL = process.env.TARGET_URL ?? "http://localhost:4000";
@@ -36,8 +37,34 @@ async function main() {
     const result = await runDiscovery(goal, target, EVIDENCE_ROOT);
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.kind === "success" ? 0 : 1);
+  } else if (cmd === "compile") {
+    const transcriptPath = arg("transcript");
+    const capabilityId = arg("capability-id");
+    const description = arg("description") ?? "";
+    const goal = arg("goal") ?? "";
+    const target = arg("target") ?? TARGET_URL;
+    const discoveryRunId = arg("discovery-run-id") ?? "unknown";
+    const out = arg("out");
+    if (!transcriptPath || !capabilityId || !out) {
+      console.error(
+        "usage: compile --transcript <path> --capability-id <id> --description '...' --goal '...' --target <url> --discovery-run-id <id> --out <path>"
+      );
+      process.exit(1);
+    }
+    const artifact = compileFromTranscriptFile(transcriptPath, {
+      capabilityId,
+      description,
+      goal,
+      targetUrl: target,
+      discoveryRunId,
+    });
+    writeFileSync(out, JSON.stringify(artifact, null, 2));
+    console.log(`Compiled artifact written to ${out}`);
+    console.log(JSON.stringify(artifact, null, 2));
   } else {
-    console.error("usage: run-agent --goal '...' --target <url>  |  replay --artifact <path> --input '<json>'");
+    console.error(
+      "usage: run-agent --goal '...' --target <url>  |  compile --transcript <path> --capability-id <id> --out <path>  |  replay --artifact <path> --input '<json>'"
+    );
     process.exit(1);
   }
 }

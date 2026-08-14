@@ -95,6 +95,32 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   asymmetry (discovery varies, replay doesn't) is a good REPORT.md talking point for
   "Determinism & error handling."
 
+- **V2 artifact compiler design**: transcript's own locators are data-specific (the LLM
+  identified the balance cell by its literal value, e.g. `role=cell name="4820.55 USD"` —
+  only correct for one member). The compiler doesn't just copy discovery's locator verbatim;
+  for `extract` steps it derives a value-independent fallback (`tr:has-text('<label>')`) by
+  scanning the accessibility snapshot for the label cell adjacent to the extracted value.
+  Input parameterization: a `type` action's value is promoted to a named input parameter only
+  if that literal value appears in the original goal text (heuristic — "came from the goal"
+  vs "constant"), named via camelCase of the control's accessible name (`"Member ID"` →
+  `memberId`).
+- **Verified V2 for real**: compiled `capabilities/lookup-savings-balance-compiled.json` from
+  the actual V1 discovery transcript (`discovery-1786735865567`), replayed it with **zero
+  manual edits** against (a) the same member (12345, matches discovery) and (b) a **different**
+  member (67890, never seen during discovery) — both succeeded. Member 67890's run correctly
+  fell through to the compiler-derived fallback locator (the primary value-specific strategy
+  correctly failed to match), proving the fallback-chain design actually generalizes, not just
+  in theory.
+- **Known V2 output-shape inconsistency (documented, not fixed yet)**: which locator strategy
+  resolves determines the extracted string's shape — the primary (role+exact-value) strategy
+  returns the bare value (`"4820.55 USD"`), while the label-based cssPath fallback returns the
+  full row text (`"Savings Balance132.10 USD"`, label+value concatenated with no separator,
+  since the row's cells are directly adjacent in the legacy table markup). Both are truthy
+  successful extractions (not a correctness bug), but the output contract isn't shape-stable
+  across which strategy hit. Left as-is for V2 (scope was proving zero-edit reuse works, which
+  it does); a real fix would parse structured label/value pairs instead of raw row text —
+  candidate for "Cuts" section of REPORT.md if not addressed later.
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step

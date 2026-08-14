@@ -1,0 +1,119 @@
+{
+  "capabilityId": "lookup-savings-balance-compiled",
+  "version": 1,
+  "description": "Look up a member by ID and read their current savings balance (compiled from a real discovery run).",
+  "inputSchema": {
+    "memberId": "string"
+  },
+  "outputSchema": {
+    "savings_balance": "string"
+  },
+  "steps": [
+    {
+      "index": 0,
+      "action": "type",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "textbox",
+            "meta": {
+              "name": "Member ID"
+            }
+          }
+        ]
+      },
+      "valueTemplate": "{{memberId}}",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    },
+    {
+      "index": 1,
+      "action": "click",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "button",
+            "meta": {
+              "name": "Search"
+            }
+          },
+          {
+            "kind": "text",
+            "value": "Search",
+            "meta": {
+              "exact": "true"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    },
+    {
+      "index": 2,
+      "action": "extract",
+      "target": {
+        "strategies": [
+          {
+            "kind": "role",
+            "value": "cell",
+            "meta": {
+              "name": "4820.55 USD"
+            }
+          },
+          {
+            "kind": "cssPath",
+            "value": "table[border='1'] tr:has-text('Savings Balance')"
+          }
+        ]
+      },
+      "extractAs": "savings_balance",
+      "timeoutMs": 5000,
+      "retry": {
+        "max": 1,
+        "backoffMs": 200
+      }
+    }
+  ],
+  "successCondition": {
+    "kind": "elementText",
+    "target": {
+      "strategies": [
+        {
+          "kind": "role",
+          "value": "cell",
+          "meta": {
+            "name": "4820.55 USD"
+          }
+        },
+        {
+          "kind": "cssPath",
+          "value": "table[border='1'] tr:has-text('Savings Balance')"
+        }
+      ]
+    }
+  },
+  "recoveryRules": [],
+  "allowlistScope": {
+    "domains": [
+      "localhost"
+    ],
+    "actions": [
+      "type",
+      "click",
+      "extract"
+    ]
+  },
+  "createdFrom": {
+    "discoveryRunId": "discovery-1786735865567",
+    "timestamp": "2026-08-14T19:44:29.186Z"
+  }
+}
