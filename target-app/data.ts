@@ -5,6 +5,7 @@ export interface Member {
   currency: string;
   requiresInterstitial?: boolean;
   restricted?: boolean;
+  responseDelayMs?: number;
 }
 
 export const members: Record<string, Member> = {
@@ -17,6 +18,11 @@ export const members: Record<string, Member> = {
   // (permission denied, not "not found") — proves the taxonomy is a real
   // set of policies, not one hardcoded pattern. See business-outcomes.ts.
   "40404": { id: "40404", name: "Restricted Member", savingsBalance: 0, currency: "USD", restricted: true },
+  // Simulates a slow backend (e.g. a core-banking lookup hitting a legacy
+  // mainframe) — a genuine timing failure, not a hand-broken locator. Used
+  // to exercise escalation from an organic error, with an UNMODIFIED base
+  // artifact (see DECISIONS.md).
+  "88888": { id: "88888", name: "Devon Okafor", savingsBalance: 2100.0, currency: "USD", responseDelayMs: 7000 },
 };
 
 export const subAccounts: Array<{

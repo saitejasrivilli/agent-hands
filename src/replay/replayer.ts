@@ -132,7 +132,7 @@ export async function replay(
 
       logger.log("system", "step_start", { index: step.index, action: step.action });
       try {
-        enforceGuardrails(adapter, step, inputs, artifact.allowlistScope);
+        enforceGuardrails(adapter, step, inputs, artifact.allowlistScope, artifact.capabilityId, logger);
         await executeStep(adapter, step, inputs, outputs);
         logger.log("system", "step_ok", { index: step.index });
       } catch (err) {
@@ -148,9 +148,17 @@ export async function replay(
           logger.writeResult(result);
           return result;
         }
-        if (err instanceof LocatorResolutionError) {
+        // Any other error (a real Playwright timeout from a slow backend, a
+        // network error, etc.) — not just LocatorResolutionError — is a hard
+        // failure, not a reason to crash the whole process. This was a real
+        // gap: previously only LocatorResolutionError was caught here, so an
+        // organic failure like a genuine navigation timeout would propagate
+        // uncaught and kill the CLI instead of returning a typed Result.
+        if (err instanceof Error) {
+          const isLocatorFailure = err instanceof LocatorResolutionError;
           const snap = await adapter.snapshot(logger.dir, `failure-step-${step.index}`);
-          logger.log("system", "step_failed", { index: step.index, reason: "locator_resolution", ...snap });
+          const reason = isLocatorFailure ? "locator_resolution" : "unexpected_error";
+          logger.log("system", "step_failed", { index: step.index, reason, ...snap });
 
           if (options.enableEscalation && escalatedOnceForStep !== step.index) {
             escalatedOnceForStep = step.index;
@@ -159,7 +167,7 @@ export async function replay(
               {
                 capabilityId: artifact.capabilityId,
                 stepIndex: step.index,
-                reason: `locator resolution failed: ${err.message}`,
+                reason: `${reason}: ${err.message}`,
                 screenshotPath: snap.screenshotPath,
               },
               logger,
@@ -180,7 +188,9 @@ export async function replay(
           const result: Result = {
             kind: "failure",
             step: step.index,
-            expected: `element resolvable via one of ${step.target?.strategies.length ?? 0} strategies`,
+            expected: isLocatorFailure
+              ? `element resolvable via one of ${step.target?.strategies.length ?? 0} strategies`
+              : "step to complete without error",
             observed: err.message,
             evidenceId: runId,
           };
@@ -237,6 +247,8 @@ async function executeStep(
     type: step.action as any,
     target: step.target?.strategies,
     value,
+    timeoutMs: step.timeoutMs,
+    retry: step.retry,
   });
   if (step.action === "extract" && step.extractAs) {
     outputs[step.extractAs] = extracted;

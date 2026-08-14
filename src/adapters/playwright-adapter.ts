@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, Page } from "playwright";
 import { chromium } from "playwright";
 import type { SurfaceAdapter, SurfaceState, ActFor } from "./surface-adapter.js";
-import { resolveLocator, LocatorResolutionError } from "../replay/locator-resolver.js";
+import { resolveLocator, resolveLocatorWithBudget, LocatorResolutionError } from "../replay/locator-resolver.js";
 import type { EvidenceLogger } from "../evidence/logger.js";
 
 export class PlaywrightAdapter implements SurfaceAdapter {
@@ -15,6 +15,17 @@ export class PlaywrightAdapter implements SurfaceAdapter {
     adapter.browser = await chromium.launch({ headless });
     adapter.context = await adapter.browser.newContext();
     adapter.currentPage = await adapter.context.newPage();
+    // A bounded action/navigation timeout is a real production safeguard,
+    // not just a test convenience: without it, a stalled backend hangs the
+    // whole replay indefinitely instead of surfacing a typed, debuggable
+    // failure. setDefaultTimeout covers locator actions (click/fill/etc,
+    // including the navigation a click implicitly triggers);
+    // setDefaultNavigationTimeout covers explicit goto/waitForNavigation —
+    // both are needed, they are NOT the same timeout in Playwright. Kept
+    // generous relative to this app's actual (near-instant) pages — only a
+    // genuinely stalled response should ever hit it.
+    adapter.currentPage.setDefaultTimeout(5000);
+    adapter.currentPage.setDefaultNavigationTimeout(5000);
     await adapter.currentPage.goto(startUrl);
     return adapter;
   }
@@ -34,6 +45,16 @@ export class PlaywrightAdapter implements SurfaceAdapter {
     };
   }
 
+  private async resolve(action: ActFor) {
+    const strategies = action.target!;
+    const r =
+      action.timeoutMs && action.retry
+        ? await resolveLocatorWithBudget(this.currentPage, strategies, { timeoutMs: action.timeoutMs, retry: action.retry })
+        : await resolveLocator(this.currentPage, strategies);
+    this.lastStrategyHit = { kind: r.strategyKind, index: r.strategyIndex };
+    return r;
+  }
+
   async act(action: ActFor): Promise<string | void> {
     switch (action.type) {
       case "navigate": {
@@ -41,26 +62,22 @@ export class PlaywrightAdapter implements SurfaceAdapter {
         return;
       }
       case "click": {
-        const r = await resolveLocator(this.currentPage, action.target!);
-        this.lastStrategyHit = { kind: r.strategyKind, index: r.strategyIndex };
+        const r = await this.resolve(action);
         await r.locator.click();
         return;
       }
       case "type": {
-        const r = await resolveLocator(this.currentPage, action.target!);
-        this.lastStrategyHit = { kind: r.strategyKind, index: r.strategyIndex };
+        const r = await this.resolve(action);
         await r.locator.fill(action.value ?? "");
         return;
       }
       case "waitFor": {
-        const r = await resolveLocator(this.currentPage, action.target!);
-        this.lastStrategyHit = { kind: r.strategyKind, index: r.strategyIndex };
+        const r = await this.resolve(action);
         await r.locator.waitFor({ state: "visible" });
         return;
       }
       case "extract": {
-        const r = await resolveLocator(this.currentPage, action.target!);
-        this.lastStrategyHit = { kind: r.strategyKind, index: r.strategyIndex };
+        const r = await this.resolve(action);
         return (await r.locator.textContent()) ?? "";
       }
     }

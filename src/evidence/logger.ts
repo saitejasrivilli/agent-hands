@@ -38,9 +38,17 @@ function redact(value: unknown): unknown {
   return value;
 }
 
+export interface ApprovalRecord {
+  ts: string;
+  capabilityId: string;
+  step: number;
+  action: string;
+}
+
 export class EvidenceLogger {
   readonly dir: string;
   private logPath: string;
+  private approvalsPath: string;
 
   constructor(evidenceRoot: string, runId: string) {
     this.dir = join(evidenceRoot, runId);
@@ -48,11 +56,22 @@ export class EvidenceLogger {
     mkdirSync(join(this.dir, "screenshots"), { recursive: true });
     this.logPath = join(this.dir, "steps.log.jsonl");
     if (!existsSync(this.logPath)) writeFileSync(this.logPath, "");
+    this.approvalsPath = join(this.dir, "approvals.jsonl");
   }
 
   log(actor: LogEntry["actor"], event: string, detail?: Record<string, unknown>) {
     const entry: LogEntry = { ts: new Date().toISOString(), actor, event, detail: redact(detail) as Record<string, unknown> | undefined };
     appendFileSync(this.logPath, JSON.stringify(entry) + "\n");
+  }
+
+  // Distinct from the general step log: one line per risky action that
+  // actually passed the confirmation gate, so an auditor can answer "what
+  // mutating actions happened in this run, and were they confirmed?" without
+  // scanning the full interleaved log. Addresses REPORT.md §6's "no separate
+  // approval record beyond the log entry" limitation.
+  recordApproval(record: Omit<ApprovalRecord, "ts">) {
+    const entry: ApprovalRecord = { ts: new Date().toISOString(), ...record };
+    appendFileSync(this.approvalsPath, JSON.stringify(entry) + "\n");
   }
 
   writeResult(result: unknown) {

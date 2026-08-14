@@ -49,3 +49,36 @@ export async function resolveLocator(page: Page, strategies: LocatorStrategy[]):
   }
   throw new LocatorResolutionError(strategies);
 }
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Wraps resolveLocator with condition-based polling — bounded by timeoutMs
+// and retry.max, backing off retry.backoffMs between attempts. Fixes a real
+// gap: Step.timeoutMs/retry were declared on the schema from V0 onward but
+// never actually consulted anywhere, so a step either resolved on the first
+// immediate check or failed outright — no tolerance for a page that's still
+// mid-render or a backend that's merely slow, not broken (see DECISIONS.md).
+// This is still "no fixed sleep()" in spirit: it doesn't wait a fixed amount
+// before checking, it re-checks the actual condition (does the locator
+// resolve yet?) on a bounded schedule and stops the moment it does.
+export async function resolveLocatorWithBudget(
+  page: Page,
+  strategies: LocatorStrategy[],
+  budget: { timeoutMs: number; retry: { max: number; backoffMs: number } }
+): Promise<ResolveResult> {
+  const deadline = Date.now() + budget.timeoutMs;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= budget.retry.max; attempt++) {
+    try {
+      return await resolveLocator(page, strategies);
+    } catch (err) {
+      lastError = err;
+      const timeLeft = deadline - Date.now();
+      if (attempt === budget.retry.max || timeLeft <= 0) break;
+      await sleep(Math.min(budget.retry.backoffMs, timeLeft));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new LocatorResolutionError(strategies);
+}

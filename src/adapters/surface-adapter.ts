@@ -12,6 +12,12 @@ export interface ActFor {
   type: "click" | "type" | "navigate" | "waitFor" | "extract";
   target?: LocatorStrategy[];
   value?: string;
+  // Optional condition-based resolution budget (see locator-resolver.ts's
+  // resolveLocatorWithBudget). Omitted by callers that don't have a Step to
+  // draw it from (e.g. the discovery loop's single-shot actions) — falls
+  // back to a single immediate check, unchanged from prior behavior.
+  timeoutMs?: number;
+  retry?: { max: number; backoffMs: number };
 }
 
 export interface SurfaceAdapter {

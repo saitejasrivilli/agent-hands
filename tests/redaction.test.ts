@@ -34,6 +34,18 @@ test("redaction: does not false-positive on a bare evidenceId-shaped timestamp",
   assert.ok(result.includes("1786737312169"), "bare numeric IDs must survive redaction unchanged");
 });
 
+test("redaction: DOB and IPv4 value patterns, without false-positiving on currency/version-like strings", () => {
+  const logger = new EvidenceLogger(EVIDENCE_ROOT, "dob-ip");
+  logger.log("system", "e", {
+    note: "born 08/14/1990, request from 192.168.1.42",
+    balance: "132.10 USD",
+  });
+  const line = readFileSync(join(EVIDENCE_ROOT, "dob-ip", "steps.log.jsonl"), "utf-8");
+  assert.ok(line.includes("[REDACTED-DOB]"));
+  assert.ok(line.includes("[REDACTED-IP]"));
+  assert.ok(line.includes("132.10 USD"), "a plain currency amount must not be treated as an IP address");
+});
+
 test("redaction: recurses into nested objects (e.g. a Result's outputs)", () => {
   const logger = new EvidenceLogger(EVIDENCE_ROOT, "nested");
   logger.writeResult({ kind: "success", outputs: { note: "SSN on file: 987-65-4321" }, evidenceId: "nested" });

@@ -1,0 +1,14 @@
+{"ts":"2026-08-14T21:30:53.184Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance","inputs":{"memberId":"88888"}}}
+{"ts":"2026-08-14T21:30:53.380Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T21:30:53.422Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T21:30:53.428Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T21:31:00.530Z","actor":"system","event":"step_failed","detail":{"index":1,"reason":"unexpected_error","screenshotPath":"evidence/replay-lookup-savings-balance-1786743053183/screenshots/failure-step-1.png","axTreePath":"evidence/replay-lookup-savings-balance-1786743053183/screenshots/failure-step-1.ax.json"}}
+{"ts":"2026-08-14T21:31:00.531Z","actor":"system","event":"intervention_raised","detail":{"capabilityId":"lookup-savings-balance","stepIndex":1,"reason":"unexpected_error: locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Search' })\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"submit\" value=\"Search\"/>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n\u001b[2m    - click action done\u001b[22m\n\u001b[2m    - waiting for scheduled navigations to finish\u001b[22m\n","screenshotPath":"evidence/replay-lookup-savings-balance-1786743053183/screenshots/failure-step-1.png"}}
+{"ts":"2026-08-14T21:31:11.881Z","actor":"human","event":"manual_action_failed","detail":{"actionType":"click","role":"button","name":"Search","error":"No locator strategy resolved uniquely: [{\"kind\":\"role\",\"value\":\"button\",\"meta\":{\"name\":\"Search\"}}]"}}
+{"ts":"2026-08-14T21:31:12.910Z","actor":"human","event":"manual_action","detail":{"actionType":"extract","role":"cell","name":"2100.00 USD"}}
+{"ts":"2026-08-14T21:31:12.910Z","actor":"human","event":"manual_extract","detail":{"extractAs":"balance","value":"2100.00 USD"}}
+{"ts":"2026-08-14T21:31:13.941Z","actor":"system","event":"control_resumed","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-14T21:31:13.942Z","actor":"system","event":"escalation_resolved","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-14T21:31:13.950Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-14T21:31:13.954Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-14T21:31:13.959Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"2100.00 USD"}}}

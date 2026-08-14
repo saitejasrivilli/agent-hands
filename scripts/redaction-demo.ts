@@ -6,7 +6,9 @@ import { EvidenceLogger } from "../src/evidence/logger.js";
 // real rather than leaving it as an unverified claim.
 const logger = new EvidenceLogger("evidence", "redaction-demo");
 logger.log("system", "test_event", {
-  note: "customer provided SSN 123-45-6789, card 4111-1111-1111-1111, contact jane@example.com or 555-123-4567",
+  note:
+    "customer provided SSN 123-45-6789, card 4111-1111-1111-1111, contact jane@example.com or " +
+    "555-123-4567, DOB 08/14/1990, request from 192.168.1.42",
   accountToken: "sk-live-abc123",
   memberId: "12345",
 });

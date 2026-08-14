@@ -180,47 +180,39 @@ has no artifact/allowlist yet to enforce against.
 
 ## 7. Cuts
 
-**Cut, and why:**
+**Cut, and why (deliberately, still true after two hardening passes):**
 - Multi-tenant / desktop implementations — out of scope per 3.7; addressed in design (§4).
 - Real-time co-browsing console — out of scope per 3.6's own scope note; built a bare/mock
   console with a real handoff mechanism underneath instead.
 - A dashboard/web UI for triggering runs — CLI already satisfies the README's command
-  requirement; declined deliberately, not defaulted into (see conversation record).
-- Discovery-time locator fallback chains — single role+name locator during discovery; the
-  fallback chain is a compiler-time concern (V2), not duplicated in the Agent Loop.
-- A real risky-action approval record beyond the log entry itself.
-- Route-canonicalization as a generic, reusable function (concrete tenant-override merging is
-  implemented and verified — see §4 — but a general `/x/123 → /x/:id` regex-based
-  canonicalizer wasn't built; the current override mechanism edits locators directly instead).
-- A fast unit-test layer for logic that doesn't need a real browser — the test suite (§below)
-  is integration-style throughout (real Playwright, real spawned target-app), the right level
-  for what this project needs to prove, but slower (~4s) than pure unit tests would be.
+  requirement; declined deliberately, not defaulted into.
+- A real `axPath`/desktop locator adapter — the brief explicitly doesn't expect desktop
+  support, and there's no real desktop target in this project to verify one against. Building
+  it anyway would be exactly the kind of unverified, speculative code this section exists to
+  flag against everywhere else.
+- A short screen recording of the full loop — explicitly optional per the brief; the written
+  evidence trail already covers "prove it's real."
 
-**Already fixed/implemented, each independently re-verified rather than just claimed done**
-(most of this list came from asking for a strict grading pass against this report's own
-claims, then actually closing what it found — not just noting it and moving on):
-1. The output-shape inconsistency in compiled artifacts — the derived fallback locator matched
-   a whole table row instead of the value cell alone. Fixed (`td:nth-child(2)` scoping) in the
-   compiler and existing capability files.
-2. Cross-tenant reuse via override, implemented concretely (§4), not left design-only.
-3. Escalation wired into discovery's stuck state, not just replay — found and fixed a real bug
-   in the process (an unawaited stuck-path return let a `finally` block close the browser out
-   from under an in-progress escalation).
-4. Dead code removed (`openai-client.ts`, superseded by Anthropic in V1, never deleted).
-5. A real mutating capability (`open-new-subaccount.json`) built to back the risky-action
-   gate, replacing a fake harness that marked a harmless step risky just to exercise the gate.
-6. Business-outcome taxonomy split into its own policy module and given a genuine second,
-   distinct entry (`permission_denied`) backed by a real target-app scenario.
-7. Redaction patterns split into their own config module and broadened (card/email/phone/DOB/
-   account numbers) — catching a real false-positive bug in the process (an early card-number
-   pattern would have redacted every `evidenceId`), fixed with a regression test before it
-   shipped.
-8. An automated test suite added (`npm test`, 16 tests) — previously the single largest gap:
-   every verification in this project had been a manual CLI run.
+**Fixed/implemented across two rounds, each independently re-verified, not just claimed done**
+(this list exists because a strict grading pass against this report's own claims found real
+gaps, and closing them — not just noting them — was the point):
 
-**Still next, in priority order:**
-1. A general route-canonicalization function, beyond the current per-locator override.
-2. A fast unit-test layer alongside the integration suite.
-3. A short screen recording of the full loop (discovery → compile → replay → escalation) —
-   explicitly optional per the brief; the written evidence trail already covers "prove it's
-   real."
+*Round 1:* the compiled-artifact output-shape bug (fallback matched a whole row, not the value
+cell); cross-tenant reuse implemented concretely (§4); escalation wired into discovery
+(found/fixed an unawaited-return bug that let `finally` close the browser mid-escalation);
+dead code removed; a real mutating capability built to back the risky-action gate; the
+business-outcome taxonomy split into its own module with a genuine second entry; redaction
+split into its own module and broadened; an automated test suite added (previously the single
+largest gap — every prior verification had been a manual CLI run).
+
+*Round 2:* a real gap in the Replayer's error handling (only `LocatorResolutionError` was
+caught — any other error, e.g. a genuine timeout, would crash the process instead of returning
+a typed `Result`) found and fixed while building an **organic** escalation demo — a genuinely
+slow backend, an unmodified base artifact, a real Playwright timeout, no hand-broken locator
+anywhere. That work also surfaced and fixed a second gap: `Step.timeoutMs`/`retry` had been
+declared on the schema since V0 but never actually consulted by execution. Also: a generic
+`canonicalizeRoute()` function (distinct from tenant-override's per-step merging); a separate
+risky-action approval record (`approvals.jsonl`); domain-allowlist guardrails extended to the
+discovery path (previously enforced only in replay); redaction broadened further (DOB, IPv4);
+pure-logic unit tests added alongside the integration suite (redaction, tenant-override,
+route-canonicalization all run without a browser).

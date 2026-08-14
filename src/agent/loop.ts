@@ -4,6 +4,7 @@ import { callAnthropicWithTools } from "./anthropic-client.js";
 import { SYSTEM_PROMPT, userPromptFor, AGENT_TOOLS } from "./prompts.js";
 import type { LocatorStrategy } from "../artifact/types.js";
 import { escalate } from "../escalation/manager.js";
+import { checkDomainAllowed, GuardrailViolation } from "../guardrails/wrapper.js";
 
 export interface TranscriptEntry {
   index: number;
@@ -26,6 +27,14 @@ export interface DiscoveryOptions {
   enableEscalation?: boolean;
   operatorPort?: number;
   escalationTimeoutMs?: number;
+  // Discovery has no Artifact yet to carry an allowlistScope, so this fills
+  // the same role directly: domains the agent is permitted to act on.
+  // Defaults to just the target's own hostname — an LLM-driven discovery
+  // run should not be free to wander/act outside the app it was pointed at,
+  // any more than a compiled artifact's replay is (see guardrails/wrapper.ts
+  // — this reuses the exact same check, closing a real gap: previously only
+  // the Replayer's path enforced any domain allowlist at all).
+  allowedDomains?: string[];
 }
 
 export async function runDiscovery(
@@ -43,6 +52,7 @@ export async function runDiscovery(
   const outputs: Record<string, unknown> = {};
   const historyLines: string[] = [];
   const startedAt = Date.now();
+  const allowedDomains = options.allowedDomains ?? [new URL(targetUrl).hostname];
 
   // Shared by every "stuck" exit below — tries escalation first if enabled,
   // falls back to the plain stuck result if the human doesn't act (or
@@ -102,6 +112,7 @@ export async function runDiscovery(
       ];
 
       try {
+        checkDomainAllowed(adapter.page().url(), { domains: allowedDomains, actions: [] });
         if (toolCall.name === "click") {
           await adapter.act({ type: "click", target });
           historyLines.push(`click role=${toolCall.arguments.role} name="${toolCall.arguments.name}"`);
@@ -117,6 +128,16 @@ export async function runDiscovery(
         }
         logger.log("agent", "act_ok", { tool: toolCall.name });
       } catch (err) {
+        if (err instanceof GuardrailViolation) {
+          // Unlike a locator/timeout failure (which the model can try to
+          // work around next turn), a guardrail violation is a policy
+          // decision, not a retryable mistake — stop immediately, the same
+          // way the Replayer treats it, rather than escalating (escalation
+          // implies a human might just wave it through, which defeats the
+          // point of an allowlist the LLM itself doesn't get to override).
+          logger.log("system", "guardrail_blocked", { index: i, reason: err.reason });
+          return { kind: "stuck", transcript, reason: `guardrail_blocked: ${err.reason}`, runId };
+        }
         logger.log("agent", "act_failed", { tool: toolCall.name, error: (err as Error).message });
         historyLines.push(`${toolCall.name} FAILED: ${(err as Error).message}`);
       }

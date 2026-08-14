@@ -1,0 +1,4 @@
+{"ts":"2026-08-14T21:36:19.300Z","actor":"system","event":"discovery_started","detail":{"goal":"look up member 12345 and read their current savings balance","targetUrl":"http://localhost:4000/"}}
+{"ts":"2026-08-14T21:36:19.837Z","actor":"agent","event":"observe","detail":{"url":"http://localhost:4000/"}}
+{"ts":"2026-08-14T21:36:20.971Z","actor":"agent","event":"decide","detail":{"tool":"type","args":{"role":"textbox","name":"Member ID","value":"12345","reasoning":"Need to enter the member ID 12345 into the textbox to search for this member's information"}}}
+{"ts":"2026-08-14T21:36:20.972Z","actor":"system","event":"guardrail_blocked","detail":{"index":0,"reason":"domain \"localhost\" is not in allowlistScope.domains [evil.example.com]"}}

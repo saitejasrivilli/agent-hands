@@ -288,6 +288,59 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
     verification in the project (V0-V7) was a manual CLI run reproduced by hand: correct, but
     with nothing to catch a future regression except remembering to re-run things.
 
+- **V9 — closed the remaining gaps from a second strict review, one push-back**. Pushed back
+  on building a real `axPath`/desktop locator adapter: the brief explicitly says desktop
+  support isn't expected, and there's no real desktop target in this project to verify an
+  adapter against — building it would be unverified speculative code, the exact thing this
+  hardening effort was meant to eliminate elsewhere. Fixed everything else:
+  - **Found a real latent bug while planning the organic-escalation fix**: the Replayer's step
+    loop only caught `LocatorResolutionError` specifically; any other thrown error (a genuine
+    Playwright timeout, a network error) would propagate uncaught and crash the whole process
+    instead of returning a typed `Result.failure`. Broadened the catch to `err instanceof
+    Error` generally, distinguishing `locator_resolution` vs `unexpected_error` reasons in the
+    result/log.
+  - **Organic escalation, verified for real**: added target-app member `88888` with a genuine
+    `responseDelayMs` (7000ms) simulating a slow legacy backend — no artifact anywhere is
+    hand-broken. First attempt to reproduce a failure didn't work: Playwright's `locator.click()`
+    absorbed the full delay internally before returning, so the run just succeeded slowly
+    (confirmed by timing the run at ~8.2s). Fix required `page.setDefaultTimeout()` (governs
+    locator actions like click/fill) — NOT `setDefaultNavigationTimeout()` (only governs
+    explicit `goto`/`waitForNavigation`), which was my first, wrong attempt and also produced
+    a silent full-delay success. Verified the real fix produces a genuine
+    `"Timeout 5000ms exceeded"` error against the unmodified base artifact, and that
+    `--escalate` resolves it via the operator console exactly like the engineered demos.
+  - **Found a second real bug via the above**: `Step.timeoutMs`/`retry` had been declared on
+    the artifact schema since V0 but were never actually read anywhere in execution — a step
+    either resolved on one immediate `.count()` check or failed, no retry/backoff despite the
+    schema and REPORT.md both implying otherwise. Implemented `resolveLocatorWithBudget`
+    (condition-based polling bounded by the declared timeout/retry, no fixed `sleep()`),
+    wired through `ActFor`/`PlaywrightAdapter.act()`/`executeStep`. Regression-verified the
+    full suite unaffected.
+  - **Generic route canonicalization** (`src/artifact/route-canonicalization.ts`,
+    `canonicalizeRoute()`): normalizes numeric path segments and query values to `:param`
+    placeholders, independent of `tenant-override.ts`'s per-step editing. Wired into the
+    compiler as an additive `Artifact.canonicalRoutes` field; verified on the real committed
+    discovery transcript (`/member?memberId=12345` → `/member?memberId=:memberId`).
+    Unit-tested, no browser needed.
+  - **Distinct risky-action approval record**: `EvidenceLogger.recordApproval()` writes to a
+    separate `approvals.jsonl`, called from `checkRiskyConfirmed` only when a risky step
+    actually passes its confirmation gate. Verified: a real confirmed run of
+    `open-new-subaccount.json` produced a correct, separate approval entry.
+  - **Discovery-path guardrails**: `runDiscovery` now takes `allowedDomains` (default: the
+    target's own hostname) and calls the same `checkDomainAllowed` the Replayer uses, before
+    every action. A `GuardrailViolation` here stops the run immediately (`stuck`, reason
+    `guardrail_blocked`) rather than escalating — deliberately not escalatable, since letting
+    a human simply wave through an out-of-policy domain would defeat the point of the
+    allowlist existing at all. Verified: a deliberately restrictive `--allowed-domains` value
+    blocks a real discovery run immediately, distinct from a retryable act failure.
+  - Redaction broadened further (DOB, IPv4 value patterns), verified they don't false-positive
+    on ordinary currency-shaped or version-shaped strings.
+  - Added pure-logic unit tests (`route-canonicalization.test.ts`, extended
+    `redaction.test.ts`) alongside the integration suite — `redaction.test.ts` and
+    `tenant-override.test.ts` were already effectively unit tests (no browser dependency),
+    which the round-1 "no fast unit-test layer" framing had understated.
+  - Full regression: 21/21 automated tests pass after every change in this round.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

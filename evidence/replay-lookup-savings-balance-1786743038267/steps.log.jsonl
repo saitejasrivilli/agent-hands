@@ -1,0 +1,5 @@
+{"ts":"2026-08-14T21:30:38.268Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance","inputs":{"memberId":"88888"}}}
+{"ts":"2026-08-14T21:30:38.531Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T21:30:38.568Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T21:30:38.571Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T21:30:45.694Z","actor":"system","event":"step_failed","detail":{"index":1,"reason":"unexpected_error","screenshotPath":"evidence/replay-lookup-savings-balance-1786743038267/screenshots/failure-step-1.png","axTreePath":"evidence/replay-lookup-savings-balance-1786743038267/screenshots/failure-step-1.ax.json"}}

@@ -46,14 +46,18 @@ async function main() {
     const enableEscalation = process.argv.includes("--escalate");
     const operatorPort = arg("operator-port") ? Number(arg("operator-port")) : undefined;
     const escalationTimeoutMs = arg("escalation-timeout-ms") ? Number(arg("escalation-timeout-ms")) : undefined;
+    const allowedDomains = arg("allowed-domains")?.split(",");
     if (!goal) {
-      console.error("usage: run-agent --goal '...' --target <url> [--escalate] [--operator-port <n>]");
+      console.error(
+        "usage: run-agent --goal '...' --target <url> [--escalate] [--operator-port <n>] [--allowed-domains a,b]"
+      );
       process.exit(1);
     }
     const result = await runDiscovery(goal, target, EVIDENCE_ROOT, {
       enableEscalation,
       operatorPort,
       escalationTimeoutMs,
+      allowedDomains,
     });
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.kind === "success" ? 0 : 1);

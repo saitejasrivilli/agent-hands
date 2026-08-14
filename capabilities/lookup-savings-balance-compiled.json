@@ -114,6 +114,10 @@
   },
   "createdFrom": {
     "discoveryRunId": "discovery-1786735865567",
-    "timestamp": "2026-08-14T19:44:29.186Z"
-  }
+    "timestamp": "2026-08-14T21:32:45.648Z"
+  },
+  "canonicalRoutes": [
+    "/",
+    "/member?memberId=:memberId"
+  ]
 }

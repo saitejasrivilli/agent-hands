@@ -62,7 +62,7 @@ app.get("/", (_req, res) => {
   );
 });
 
-app.get("/member", (req, res) => {
+app.get("/member", async (req, res) => {
   const memberId = String(req.query.memberId ?? "");
   const member = members[memberId];
 
@@ -74,6 +74,12 @@ app.get("/member", (req, res) => {
       )
     );
     return;
+  }
+
+  // Simulates a slow backend lookup (see data.ts's "88888" member) — a real
+  // timing failure, not a broken locator, for exercising organic escalation.
+  if (member.responseDelayMs) {
+    await new Promise((resolve) => setTimeout(resolve, member.responseDelayMs));
   }
 
   // Deliberate second, distinct business outcome — permission denied, not

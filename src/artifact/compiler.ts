@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { TranscriptEntry } from "../agent/loop.js";
 import type { Artifact, ActionType, FieldType, LocatorStrategy, Step } from "./types.js";
+import { canonicalizeRoute } from "./route-canonicalization.js";
 
 // Compiles a discovery transcript (raw, LLM-produced) into a typed, versioned,
 // reusable Artifact — decoupled from the transcript per Section 3.2. The
@@ -121,6 +122,8 @@ export function compileArtifact(transcript: TranscriptEntry[], opts: CompileOpti
     ? { kind: "elementText" as const, target: (lastExtractStep as Step).target }
     : { kind: "urlMatches" as const, expected: ".*" };
 
+  const canonicalRoutes = [...new Set(transcript.map((entry) => canonicalizeRoute(entry.observation.url)))];
+
   return {
     capabilityId: opts.capabilityId,
     version: 1,
@@ -135,6 +138,7 @@ export function compileArtifact(transcript: TranscriptEntry[], opts: CompileOpti
       actions: [...actionsUsed],
     },
     createdFrom: { discoveryRunId: opts.discoveryRunId, timestamp: new Date().toISOString() },
+    canonicalRoutes,
   };
 }
 

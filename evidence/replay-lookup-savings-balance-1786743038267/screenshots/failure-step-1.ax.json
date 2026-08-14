@@ -1,0 +1,3 @@
+{
+  "ariaSnapshot": "- heading \"Member Services Console\" [level=2]\n- table:\n  - rowgroup:\n    - row \"Name Devon Okafor\":\n      - cell \"Name\"\n      - cell \"Devon Okafor\"\n    - row \"Member ID 88888\":\n      - cell \"Member ID\"\n      - cell \"88888\"\n    - row \"Savings Balance 2100.00 USD\":\n      - cell \"Savings Balance\"\n      - cell \"2100.00 USD\"\n- paragraph:\n  - link \"Open a new sub-account for this member\":\n    - /url: /member/88888/new-subaccount\n- paragraph:\n  - link \"Back to search\":\n    - /url: /"
+}

@@ -4,11 +4,13 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V8 — complete, hardened after a strict self-review.** All core requirements
-(Section 3) are real: discovery, artifact compilation, deterministic replay with error
-taxonomy, safety guardrails, and human-in-the-loop escalation with live-session handoff —
-wired into both discovery and replay. Plus a verified cross-tenant reuse demo (stretch goal),
-a real mutating capability backing the risky-action gate, and an automated test suite. See
+Status: **V9 — complete, hardened through two rounds of strict self-review.** All core
+requirements (Section 3) are real: discovery, artifact compilation, deterministic replay with
+error taxonomy, safety guardrails (now enforced in both discovery and replay), and
+human-in-the-loop escalation with live-session handoff — including escalation from a genuine,
+unengineered production failure (a slow backend), not just hand-broken demo artifacts. Plus a
+verified cross-tenant reuse demo, generic route canonicalization, a real mutating capability
+backing the risky-action gate with its own audit record, and an automated test suite. See
 `REPORT.md` for the design write-up, `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md`
 / `LLD.md` for design, and `DECISIONS.md` for the running decision log.
 
@@ -176,6 +178,35 @@ Expected: discovery completes with `"kind": "success"` and a summary noting it w
 `"Resolved via human escalation"`, with the automated step(s) and the human's manual
 actions both in the same evidence log.
 
+**10. Escalation from a genuinely organic failure (no artifact tampering at all):**
+```bash
+# member 88888 has a real, simulated-slow backend response (see target-app/data.ts) — the
+# BASE artifact is used completely unmodified
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance.json --input '{"memberId":"88888"}'
+# -> { "kind": "failure", "observed": "locator.click: Timeout 5000ms exceeded. ..." }
+# re-run the same command with --escalate to resolve it via the operator console instead
+```
+
+**11. Discovery-path guardrails — the agent itself is scoped, not just the replay artifact:**
+```bash
+node --env-file=.env node_modules/.bin/tsx src/cli.ts run-agent \
+  --goal "look up member 12345 and read their current savings balance" \
+  --target "http://localhost:4000/" \
+  --allowed-domains "evil.example.com"
+# -> { "kind": "stuck", "reason": "guardrail_blocked: domain \"localhost\" is not in
+#      allowlistScope.domains [evil.example.com]" }
+```
+
+**12. Risky-action approval record — a distinct audit trail, not just a log line:**
+```bash
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/open-new-subaccount.json \
+  --input '{"memberId":"12345","initialDeposit":"250.00","confirm":true}'
+cat evidence/replay-open-new-subaccount-<id>/approvals.jsonl
+# -> {"ts":"...","capabilityId":"open-new-subaccount","step":4,"action":"click"}
+```
+
 ## What's built so far
 
 **V0 — skeleton + deterministic replay**
@@ -305,24 +336,54 @@ the brief's own weighted criteria, then fix what the review found — not just n
   mechanisms, redaction (including a regression test for the bug above), and the
   tenant-override merge.
 
+**V9 — closed every remaining gap that was safe/sensible to close**
+- Fixed a real latent bug found while working on this: the Replayer only caught
+  `LocatorResolutionError` specifically — any other error (a genuine Playwright timeout, a
+  network error) would propagate uncaught and crash the whole process instead of returning a
+  typed `Result.failure`. Broadened the catch to any `Error`.
+- **Organic escalation, not just engineered failures**: added a target-app member whose
+  backend response is genuinely slow (simulating a legacy core-banking lookup), and gave the
+  adapter a real, bounded action/navigation timeout (a genuine production safeguard, not just
+  a test convenience — without it a stalled backend hangs the whole replay indefinitely).
+  Verified: the **unmodified** base artifact fails with a real Playwright timeout message
+  against this member — no hand-broken locator anywhere — and escalation resolves it the same
+  way as the engineered demos.
+- Found and fixed a second latent bug while wiring the above: `Step.timeoutMs`/`retry` were
+  declared on the schema since V0 but never actually consulted by execution — a step either
+  resolved on one immediate check or failed outright. Implemented real condition-based polling
+  (`resolveLocatorWithBudget`) that retries within the declared budget before giving up.
+- **Generic route canonicalization** (`src/artifact/route-canonicalization.ts`,
+  `canonicalizeRoute()`): normalizes `/member?memberId=12345` → `/member?memberId=:memberId`,
+  independent of the per-artifact tenant-override mechanism. Wired into the compiler as an
+  additive `canonicalRoutes` field. Unit-tested (no browser needed).
+- **Distinct risky-action approval record** (`approvals.jsonl`, separate from the general step
+  log): every risky step that passes confirmation gets its own auditable entry
+  (capability/step/action/timestamp) — verified written correctly on a real confirmed run.
+- **Guardrails now enforced in the discovery path too**, not just replay — `run-agent` takes
+  an `--allowed-domains` flag (defaults to the target's own hostname) and blocks the agent
+  from acting outside it, reusing the exact same check as the Replayer. Verified: a
+  deliberately restrictive `--allowed-domains` value blocks discovery immediately with a clear
+  reason, distinct from a locator/timeout failure (which the model can still retry from).
+- Broadened redaction further (DOB, IPv4), verified the new patterns don't false-positive on
+  ordinary currency/version-shaped strings.
+- One item deliberately NOT built: a real desktop/`axPath` locator adapter. The brief
+  explicitly says desktop support isn't expected, and there's no real desktop target in this
+  project to verify an adapter against — building one would be exactly the kind of unverified,
+  speculative code the rest of this hardening pass was about eliminating.
+
 ## Known limitations (tracked, not accidental)
-- `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
-  Replayer's multi-strategy fallback is not used during discovery, only during replay.
+- `run-agent`'s locator strategy is role/accessible-name only (no fallback chain during
+  discovery) — the Replayer's multi-strategy fallback is a compiler-time (V2) concern.
 - `retryStep` recovery action is a declared no-op (the step loop naturally retries on its next
   pass) — only `dismiss` and `reloadAndRetry` perform an explicit action.
 - `LocatorStrategy.kind` includes `axPath`/`coordinates` for future surface types (desktop),
-  but neither is implemented — the extension point exists in the type, not in working code.
-- Redaction pattern list, while broadened, is still illustrative rather than exhaustive PII
-  coverage a production system would need (see REPORT.md §6).
-- Escalation demo artifacts (both replay and discovery paths) are hand-crafted to fail on
-  purpose (a deliberately broken locator / an artificially low max-steps) so the mechanism is
-  demonstrable on demand — there's no evidence in this repo of escalation triggering from an
-  *organic* failure that wasn't engineered for the demo.
-- Test suite is integration-style (real Playwright against a real spawned target-app), which
-  is the right level for this system, but means the suite takes ~4s and needs Chromium
-  installed — there's no fast unit-test layer for logic that doesn't need a real browser
-  (e.g. `applyTenantOverride` is covered, but most locator/replay logic isn't unit-tested in
-  isolation from Playwright).
+  but neither is implemented — deliberately left design-only (see V9 note above).
+- Redaction pattern list, while broadened twice now, is still illustrative rather than
+  exhaustive PII coverage a production system would need (see REPORT.md §6).
+- Test suite is integration-style for anything touching a real page (real Playwright against a
+  real spawned target-app), which is the right level for what needs proving, but slower
+  (~4s) than pure unit tests; the pure-logic pieces (redaction, tenant-override,
+  route-canonicalization) are unit-tested without a browser.
 
 ## Deliverables checklist (per the brief's Section 6)
 - `/README.md` — this file: setup, exact demo commands, what's built.

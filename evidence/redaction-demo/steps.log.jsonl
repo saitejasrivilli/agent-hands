@@ -1,1 +1,1 @@
-{"ts":"2026-08-14T21:18:13.664Z","actor":"system","event":"test_event","detail":{"note":"customer provided SSN [REDACTED-SSN], card [REDACTED-CARD], contact [REDACTED-EMAIL] or [REDACTED-PHONE]","accountToken":"[REDACTED]","memberId":"12345"}}
+{"ts":"2026-08-14T21:36:35.700Z","actor":"system","event":"test_event","detail":{"note":"customer provided SSN [REDACTED-SSN], card [REDACTED-CARD], contact [REDACTED-EMAIL] or [REDACTED-PHONE], DOB [REDACTED-DOB], request from [REDACTED-IP]","accountToken":"[REDACTED]","memberId":"12345"}}

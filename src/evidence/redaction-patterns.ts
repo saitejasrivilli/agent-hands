@@ -28,4 +28,10 @@ export const VALUE_PATTERNS: ValuePattern[] = [
   { name: "card", pattern: /\b\d{4}[ -]\d{4}[ -]\d{4}(?:[ -]?\d{1,4})?\b/g, replacement: "[REDACTED-CARD]" },
   { name: "email", pattern: /\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b/gi, replacement: "[REDACTED-EMAIL]" },
   { name: "phone", pattern: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, replacement: "[REDACTED-PHONE]" },
+  {
+    name: "dob",
+    pattern: /\b(0[1-9]|1[0-2])[/-](0[1-9]|[12]\d|3[01])[/-](19|20)\d{2}\b/g,
+    replacement: "[REDACTED-DOB]",
+  },
+  { name: "ipv4", pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g, replacement: "[REDACTED-IP]" },
 ];

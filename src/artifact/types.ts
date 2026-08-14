@@ -53,6 +53,13 @@ export interface Artifact {
   recoveryRules: RecoveryRule[];
   allowlistScope: { domains: string[]; actions: ActionType[] };
   createdFrom: { discoveryRunId: string; timestamp: string };
+  // V9 addition (backward-compatible, optional). Canonicalized (route
+  // pattern, not literal) forms of every distinct URL visited during
+  // discovery — e.g. "/member?memberId=:memberId" rather than
+  // "/member?memberId=12345". Not currently consulted by the Replayer;
+  // exists as reusable drift-detection/multi-tenant-matching metadata (see
+  // src/artifact/route-canonicalization.ts and REPORT.md §4).
+  canonicalRoutes?: string[];
 }
 
 // What replay (and discovery) always returns. Never a bare exception.
