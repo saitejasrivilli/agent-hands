@@ -1,0 +1,64 @@
+# interface.ai Take-Home — Context & Decisions Log
+
+Running log of key context and decisions for the "Computer-Use Automation System" take-home
+(Senior Software Engineer application, interface.ai). Update as decisions get made.
+
+## Assignment source
+- Brief: `Assignment A — Computer-Use Automation System.pdf` (in ~/Downloads)
+- Sender verified legit: content matches PDF, domain matches interface.ai official site, no phishing indicators.
+- Role: Senior Software Engineer, interface.ai (SF, in-person 5x/week). Stack per JD: TypeScript/Python backend, JS frontend, AWS/GCP, LLM/agentic AI integration (applied, not research).
+- No starter repo/codebase provided — build from scratch, own stack, public GitHub repo, email link to assignments@interface.ai. No deadline.
+
+## What's being graded (in weight order)
+1. System design — artifact schema + replay contract are central
+2. Correctness of core loop — agent completes real goal, replay verifies deterministically
+3. Robustness/error handling — expected outcome vs recoverable vs hard failure taxonomy
+4. Human-in-the-loop escalation — real control-transfer mechanism, not a TODO
+5. Generalization design (heterogeneity + multi-tenant) — write-up only, not built
+6. Safety & data handling — allowlist, risky-action policy, redaction
+7. Code quality
+8. Communication (REPORT.md)
+
+Explicitly NOT rewarded: feature breadth, framework name-dropping, building scaling infra (queues/clusters/multi-tenant plumbing).
+
+## Required deliverables (exact paths)
+- `/README.md` — setup/run instructions + exact demo command(s): run agent on goal → replay artifact
+- `/REPORT.md` (~1-3 pages), exactly these 7 headings: Architecture / Artifact schema / Determinism & error handling / Heterogeneity & multi-tenant / Escalation & handoff / Safety / Cuts
+- `/evidence/` — real LLM discovery run logs + saved artifact + replay run logs (ideally one replay hitting an error/exceptional state)
+
+## Non-negotiable
+- At least one genuine LLM-driven discovery run against a live surface — must be real, not described. Evidence required.
+
+## Decisions made so far
+- **Stack**: TypeScript + Playwright (matches interface.ai JD stack; Playwright gives AX-tree + DOM + screenshot under one API).
+- **LLM**: Claude or GPT-4o, tool-calling style loop (observe=snapshot, act=structured tool call).
+- **Target app**: self-hosted sample bank-like app (search member → detail → new sub-account form → confirmation), deliberately table-layout/no-test-IDs on some fields to force the "no clean DOM" problem without ToS/rate-limit risk of a public site.
+- **Architecture**: single process, synchronous, CLI-driven (`run-agent`, `replay`). No queues/services — justified by "simpler is fine" + scaling infra explicitly not rewarded.
+- **Core types locked at V0, never changed after** (see LLD.md §1): `SurfaceAdapter` (observe/act/snapshot), `Artifact` (typed capability contract w/ multi-strategy locators, versioned), `Result` (discriminated union: success | businessOutcome | failure). All later versions (V1-V6 in BUILD_PLAN.md) only add behavior around these three, never break their shape.
+- **Locator strategy**: ordered fallback list per element (testid > role/AX > text > cssPath > coordinates), resolved in order, log which strategy hit — cheap drift-detection hook for later.
+- **Guardrails enforced at the adapter boundary** (single choke point wrapping every `act()` call), not trusted to the LLM/artifact — defense in depth.
+- **Escalation shares the live session**: Operator Surface attaches to the same Playwright `BrowserContext`/`Page`, gated by a `controlState` flag (`automation | human`) checked before every guarded action — no fresh session spun up for the human.
+- **Artifact stays decoupled from raw transcript**: transcript is discovery-time evidence only (`/evidence/discovery-<id>/`), Artifact Compiler produces the reviewable versioned contract separately.
+- **Build order mirrors eval weight**: schema+replay+error-taxonomy (V0-V3) before escalation (V5) before design-only breadth (V6) — see BUILD_PLAN.md for full phased plan and definition-of-done per version.
+- **HLD/LLD docs**: `HLD.md` (components, data flow, architectural decisions) and `LLD.md` (exact types, algorithms, file layout) written up front, before implementation — kept in sync as source of truth for REPORT.md later.
+
+- **Workflow model**: parallel-within-version, serial-across-versions. Each V(n) has independent
+  sub-tracks buildable concurrently (only depend on locked interfaces, not each other). V(n+1)
+  never starts until V(n) passes its Definition-of-Done with a real evidence-producing test run
+  AND is committed+pushed to GitHub (branch-per-version: `v0-skeleton`...`v6-writeup`, tag on
+  merge: `v0`...`v6`). Every tag is independently checkoutable and demoable at that scope. See
+  BUILD_PLAN.md "Workflow rule" section + per-version Parallel tracks/Verify/Ship lines.
+
+- **V0 known gap (by design, not a bug)**: the `lookup-savings-balance` artifact's extract step
+  hard-fails on a not-found member (no "Savings Balance" row exists to extract) instead of
+  reaching the business-outcome check, which currently only runs after all steps complete.
+  Acceptable for V0 (only proves the happy-path executor). V3 fixes this properly by adding
+  mid-flow business-outcome detection (check for "no member found" marker before attempting
+  extract, not only at the end) — tracked as V3 scope, not deferred accidentally.
+
+## Decisions pending
+- Exact stop-condition thresholds (max steps, timeout values) for the agent loop
+- Exact set of "risky/irreversible" action types requiring explicit confirm step
+- Redaction field-pattern list (which field names/regexes trigger redaction)
+- Whether to implement the route-canonicalization stretch (multi-tenant credibility) or leave fully design-only
+- Mock Operator Surface: bare HTML page vs CLI — leaning HTML page for screenshot-ability in evidence
