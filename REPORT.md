@@ -93,7 +93,12 @@ type Result = { kind: "success"; outputs; evidenceId }
   specifically to exercise this — not simulated.
 - **Hard failures** carry step index, expected vs. observed, and a screenshot + AX snapshot.
 
-No fixed `sleep()` anywhere — waits are condition-based with explicit per-step timeout/retry.
+No fixed `sleep()` anywhere — waits are condition-based (`resolveLocatorWithBudget`, bounded
+polling) with explicit per-step timeout/retry actually consulted by execution (found and fixed
+a real gap: these fields were declared on the schema since V0 but never read by anything until
+this was tightened up). Every step also emits a per-run `drift.jsonl` entry — which locator
+strategy actually resolved (primary/fallback/miss) — closing the "logging hook exists, only
+the aggregation doesn't" gap into a real, inspectable signal (§4).
 
 ## 4. Heterogeneity & multi-tenant
 
@@ -117,9 +122,11 @@ way. `Step.valueTemplate` already separates parameterized values from constants,
 of what route canonicalization needs (`/member/12345` → `/member/:id` is the same
 substitution mechanism); `allowlistScope.domains` already anticipates per-tenant hostnames.
 
-**Drift detection** (not built): the resolver already logs which strategy resolved on every
-replay. A hit-rate metric per artifact per tenant would surface drift before it becomes a hard
-failure — the logging hook exists, only the aggregation doesn't.
+**Drift detection**: every replay now writes a per-step `drift.jsonl` entry (primary/fallback/
+miss, `src/artifact/drift.ts`) — verified distinguishing a member the primary strategy resolves
+for from one it doesn't (falls through to the label-based fallback instead). A hit-rate
+aggregation across many runs/tenants isn't built (the brief says not to build full
+infrastructure) — this is the minimal real per-run signal that aggregation would consume.
 
 ## 5. Escalation & handoff
 

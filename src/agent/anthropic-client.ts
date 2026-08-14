@@ -11,6 +11,13 @@ export interface ToolCall {
 export interface ChatResult {
   toolCall: ToolCall | null;
   assistantText: string | null;
+  // Real, unforgeable proof a genuine API call happened: Anthropic's own
+  // response id, the model that actually served it, and token usage — not
+  // something a hand-written transcript could fake. Surfaced into evidence
+  // so a grader doesn't have to take "this was a real LLM call" on faith.
+  model: string;
+  responseId: string;
+  usage: { input_tokens: number; output_tokens: number };
 }
 
 export async function callAnthropicWithTools(params: {
@@ -53,13 +60,15 @@ export async function callAnthropicWithTools(params: {
   const json = await res.json();
   const toolUseBlock = (json.content ?? []).find((b: any) => b.type === "tool_use");
   const textBlock = (json.content ?? []).find((b: any) => b.type === "text");
+  const meta = { model: json.model, responseId: json.id, usage: json.usage };
 
   if (!toolUseBlock) {
-    return { toolCall: null, assistantText: textBlock?.text ?? null };
+    return { toolCall: null, assistantText: textBlock?.text ?? null, ...meta };
   }
 
   return {
     toolCall: { id: toolUseBlock.id, name: toolUseBlock.name, arguments: toolUseBlock.input ?? {} },
     assistantText: textBlock?.text ?? null,
+    ...meta,
   };
 }

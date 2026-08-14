@@ -341,6 +341,31 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
     which the round-1 "no fast unit-test layer" framing had understated.
   - Full regression: 21/21 automated tests pass after every change in this round.
 
+- **V10 — three specific fixes on request, each independently verified**:
+  1. `ChatResult` extended with `model`/`responseId`/`usage` (real, unforgeable proof of a
+     genuine Anthropic API call — a hand-written transcript can't fake a real response id or
+     server-reported token counts). Logged per step in the discovery loop as `llm_response`.
+     **Found a real bug immediately upon verifying this**: the key-name redaction pattern
+     matched `token` as a bare substring, so `input_tokens`/`output_tokens` (the exact fields
+     this fix exists to surface) were being redacted to `[REDACTED]` — defeating the fix
+     before it shipped. Fixed with a negative lookahead (`token(?!s)`) so plural usage-count
+     fields pass through while singular credential-shaped fields (`accountToken`,
+     `apiToken`) still redact correctly; re-verified both cases with the existing test suite
+     plus a real discovery run showing genuine `responseId`/token counts unredacted.
+  2. Drift-detection signal made real (`src/artifact/drift.ts`): every step's locator
+     resolution outcome (primary/fallback/miss) is appended to a per-run `drift.jsonl`,
+     distinct from the general step log — closes REPORT.md §4's "the logging hook exists,
+     only the aggregation doesn't" into an actual artifact. Verified: replaying the compiled
+     artifact against member 67890 (never seen during discovery) shows `outcome: "fallback"`
+     for the extract step and `"primary"` for the others — the exact generalization behavior
+     already proven in V2, now durably recorded per-run rather than only visible in the
+     immediate CLI output.
+  3. `tests/llm-client.test.ts`: mocks `fetch` with a fixture shaped like a real Anthropic
+     response (captured from this project's own real calls) and asserts
+     `callAnthropicWithTools` parses `model`/`responseId`/`usage`/`toolCall` correctly, in both
+     the tool-call and no-tool-call cases. Also added `replayer.test.ts`'s drift assertion.
+     24/24 tests pass.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

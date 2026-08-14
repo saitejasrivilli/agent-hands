@@ -49,6 +49,7 @@ export class EvidenceLogger {
   readonly dir: string;
   private logPath: string;
   private approvalsPath: string;
+  private driftPath: string;
 
   constructor(evidenceRoot: string, runId: string) {
     this.dir = join(evidenceRoot, runId);
@@ -57,6 +58,7 @@ export class EvidenceLogger {
     this.logPath = join(this.dir, "steps.log.jsonl");
     if (!existsSync(this.logPath)) writeFileSync(this.logPath, "");
     this.approvalsPath = join(this.dir, "approvals.jsonl");
+    this.driftPath = join(this.dir, "drift.jsonl");
   }
 
   log(actor: LogEntry["actor"], event: string, detail?: Record<string, unknown>) {
@@ -72,6 +74,14 @@ export class EvidenceLogger {
   recordApproval(record: Omit<ApprovalRecord, "ts">) {
     const entry: ApprovalRecord = { ts: new Date().toISOString(), ...record };
     appendFileSync(this.approvalsPath, JSON.stringify(entry) + "\n");
+  }
+
+  // Distinct from the general step log: one line per step's locator
+  // resolution outcome (primary/fallback/miss), so drift (a strategy
+  // starting to fall through more often than it used to) can be tracked
+  // across many replays without scanning the full interleaved log.
+  recordDrift(sample: Record<string, unknown>) {
+    appendFileSync(this.driftPath, JSON.stringify(sample) + "\n");
   }
 
   writeResult(result: unknown) {

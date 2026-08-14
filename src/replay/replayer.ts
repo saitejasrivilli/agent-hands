@@ -5,6 +5,7 @@ import { resolveLocator } from "./locator-resolver.js";
 import { enforceGuardrails, GuardrailViolation } from "../guardrails/wrapper.js";
 import { escalate } from "../escalation/manager.js";
 import { BUSINESS_OUTCOME_MARKERS } from "./business-outcomes.js";
+import { recordDrift } from "../artifact/drift.js";
 
 // Business outcomes are checked after every step (not just at the very end)
 // — a not-found (or permission-denied, etc.) result can legitimately appear
@@ -135,6 +136,9 @@ export async function replay(
         enforceGuardrails(adapter, step, inputs, artifact.allowlistScope, artifact.capabilityId, logger);
         await executeStep(adapter, step, inputs, outputs);
         logger.log("system", "step_ok", { index: step.index });
+        if (step.target) {
+          recordDrift(logger, artifact.capabilityId, step.index, adapter.getLastStrategyHit());
+        }
       } catch (err) {
         if (err instanceof GuardrailViolation) {
           logger.log("system", "guardrail_blocked", { index: step.index, reason: err.reason });

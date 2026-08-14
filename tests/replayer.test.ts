@@ -88,3 +88,20 @@ test("replay: compiled artifact (V2) replays correctly on data never seen during
   assert.equal(result.kind, "success");
   if (result.kind === "success") assert.equal(result.outputs.savings_balance, "132.10 USD");
 });
+
+test("replay: drift signal distinguishes primary vs fallback locator resolution", async () => {
+  const artifact = loadArtifact("capabilities/lookup-savings-balance-compiled.json");
+  const result = await replay(artifact, { memberId: "67890" }, TARGET_URL, EVIDENCE_ROOT);
+  assert.equal(result.kind, "success");
+  if (result.kind !== "success") return;
+  const drift = readFileSync(`${EVIDENCE_ROOT}/${result.evidenceId}/drift.jsonl`, "utf-8")
+    .trim()
+    .split("\n")
+    .map((l) => JSON.parse(l));
+  const extractStep = drift.find((d: { step: number }) => d.step === 2);
+  assert.equal(
+    extractStep.outcome,
+    "fallback",
+    "the value-specific primary strategy should miss for a member never seen during discovery"
+  );
+});

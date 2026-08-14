@@ -1,0 +1,3 @@
+{"ts":"2026-08-14T22:45:31.413Z","capabilityId":"lookup-savings-balance-compiled","step":0,"strategyIndex":0,"strategyKind":"role","outcome":"primary"}
+{"ts":"2026-08-14T22:45:31.457Z","capabilityId":"lookup-savings-balance-compiled","step":1,"strategyIndex":0,"strategyKind":"role","outcome":"primary"}
+{"ts":"2026-08-14T22:45:31.473Z","capabilityId":"lookup-savings-balance-compiled","step":2,"strategyIndex":1,"strategyKind":"cssPath","outcome":"fallback"}

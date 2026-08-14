@@ -9,8 +9,13 @@
 // REPORT.md §6 "Limits"). Broadened here beyond the original single SSN
 // pattern to make that intent concrete rather than aspirational.
 
+// `token(?!s)` excludes plural "*_tokens" usage-count fields (e.g. Anthropic's
+// input_tokens/output_tokens) from the singular "*Token"/"*_token" credential
+// pattern — found as a real false positive: token usage counts (meant to be
+// real, unforgeable proof an LLM call happened, see loop.ts's llm_response
+// log) were being redacted by this same pattern before this fix.
 export const SENSITIVE_KEY_PATTERN =
-  /ssn|password|token|secret|credential|apikey|social.?security|dob|date.?of.?birth|account.?number|routing.?number|pin\b/i;
+  /ssn|password|token(?!s)|secret|credential|apikey|social.?security|dob|date.?of.?birth|account.?number|routing.?number|pin\b/i;
 
 export interface ValuePattern {
   name: string;

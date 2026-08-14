@@ -87,12 +87,16 @@ export async function runDiscovery(
       const prompt = userPromptFor(goal, state.url, state.axTree as string, state.domSummary, historyLines);
       logger.log("agent", "observe", { url: state.url });
 
-      const { toolCall } = await callAnthropicWithTools({
+      const { toolCall, model, responseId, usage } = await callAnthropicWithTools({
         model: MODEL,
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         tools: AGENT_TOOLS,
       });
+      // Real, unforgeable proof this step was a genuine API call, not a
+      // canned transcript — Anthropic's own response id + actual model +
+      // token usage, logged per step.
+      logger.log("agent", "llm_response", { model, responseId, usage });
 
       if (!toolCall) {
         return await stuckOrEscalate("model_returned_no_tool_call");

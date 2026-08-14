@@ -4,15 +4,17 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V9 — complete, hardened through two rounds of strict self-review.** All core
-requirements (Section 3) are real: discovery, artifact compilation, deterministic replay with
-error taxonomy, safety guardrails (now enforced in both discovery and replay), and
-human-in-the-loop escalation with live-session handoff — including escalation from a genuine,
-unengineered production failure (a slow backend), not just hand-broken demo artifacts. Plus a
-verified cross-tenant reuse demo, generic route canonicalization, a real mutating capability
-backing the risky-action gate with its own audit record, and an automated test suite. See
-`REPORT.md` for the design write-up, `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md`
-/ `LLD.md` for design, and `DECISIONS.md` for the running decision log.
+Status: **V10 — complete**, hardened through three rounds of review. All core requirements
+(Section 3) are real: discovery, artifact compilation, deterministic replay with error
+taxonomy, safety guardrails (enforced in both discovery and replay), and human-in-the-loop
+escalation with live-session handoff — including escalation from a genuine, unengineered
+production failure (a slow backend). Discovery evidence now carries real, unforgeable proof of
+each LLM call (Anthropic's own response id + token usage), and every replay records a
+per-step drift signal (which locator strategy actually resolved). Plus a verified cross-tenant
+reuse demo, generic route canonicalization, a real mutating capability backing the
+risky-action gate with its own audit record, and an automated test suite. See `REPORT.md` for
+the design write-up, `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for
+design, and `DECISIONS.md` for the running decision log.
 
 ## Automated tests
 
@@ -205,6 +207,26 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
   --input '{"memberId":"12345","initialDeposit":"250.00","confirm":true}'
 cat evidence/replay-open-new-subaccount-<id>/approvals.jsonl
 # -> {"ts":"...","capabilityId":"open-new-subaccount","step":4,"action":"click"}
+```
+
+**13. Real, unforgeable proof of each LLM call — not just a described one:**
+```bash
+node --env-file=.env node_modules/.bin/tsx src/cli.ts run-agent \
+  --goal "look up member 12345 and read their current savings balance" \
+  --target "http://localhost:4000/"
+grep llm_response evidence/discovery-<id>/steps.log.jsonl
+# -> {"model":"claude-haiku-4-5-...","responseId":"msg_...","usage":{"input_tokens":1339,...}}
+```
+Anthropic's own response id and server-reported token counts — not something a hand-written
+transcript could fake.
+
+**14. Drift signal — which locator strategy actually resolved, per step, per run:**
+```bash
+TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
+  --artifact capabilities/lookup-savings-balance-compiled.json --input '{"memberId":"67890"}'
+cat evidence/replay-lookup-savings-balance-compiled-<id>/drift.jsonl
+# -> step 2 shows "outcome":"fallback" — the value-specific primary strategy correctly
+#    missed for a member never seen during discovery, the cssPath fallback resolved instead
 ```
 
 ## What's built so far
