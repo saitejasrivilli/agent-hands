@@ -92,9 +92,15 @@ export function compileArtifact(transcript: TranscriptEntry[], opts: CompileOpti
     } else {
       // extract
       const key = String(args.key ?? `field${i}`);
+      // Fixed known bug (see DECISIONS.md): the earlier version of this
+      // fallback matched the whole <tr>, so its textContent was
+      // "label+value" concatenated — inconsistent with the primary
+      // strategy's bare-value output. Scoping to the row's second cell
+      // (the value column in this table's label/value layout) makes output
+      // shape consistent regardless of which strategy resolves.
       const label = deriveRowLabel(entry.observation.ax, accessibleName);
       if (label) {
-        strategies.push({ kind: "cssPath", value: `table[border='1'] tr:has-text('${label}')` });
+        strategies.push({ kind: "cssPath", value: `table[border='1'] tr:has-text('${label}') td:nth-child(2)` });
       }
       outputSchema[key] = "string";
       step = {

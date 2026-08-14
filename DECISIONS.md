@@ -111,15 +111,17 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   fell through to the compiler-derived fallback locator (the primary value-specific strategy
   correctly failed to match), proving the fallback-chain design actually generalizes, not just
   in theory.
-- **Known V2 output-shape inconsistency (documented, not fixed yet)**: which locator strategy
-  resolves determines the extracted string's shape — the primary (role+exact-value) strategy
-  returns the bare value (`"4820.55 USD"`), while the label-based cssPath fallback returns the
-  full row text (`"Savings Balance132.10 USD"`, label+value concatenated with no separator,
-  since the row's cells are directly adjacent in the legacy table markup). Both are truthy
-  successful extractions (not a correctness bug), but the output contract isn't shape-stable
-  across which strategy hit. Left as-is for V2 (scope was proving zero-edit reuse works, which
-  it does); a real fix would parse structured label/value pairs instead of raw row text —
-  candidate for "Cuts" section of REPORT.md if not addressed later.
+- **V2 output-shape inconsistency — found, documented, then fixed post-V6**: which locator
+  strategy resolved used to determine the extracted string's shape — the primary
+  (role+exact-value) strategy returned the bare value (`"4820.55 USD"`), while the label-based
+  cssPath fallback returned the whole row's concatenated text (`"Savings Balance132.10 USD"`).
+  Root cause: the fallback locator (`tr:has-text('<label>')`) matched the entire `<tr>`, not
+  just the value cell. Fix: scope the fallback to the row's second cell
+  (`... tr:has-text('<label>') td:nth-child(2)`), in both the compiler (so future compiled
+  artifacts get this automatically) and the existing hand-authored capability files. Verified:
+  re-ran all 4 affected artifacts (V0's hand-written, V2's compiled against both the seen and
+  unseen member, V3's recoverable flow) — all now return the bare value regardless of which
+  strategy resolves; business-outcome and escalation paths regression-checked unaffected.
 
 - **V3 error taxonomy — fixed the V0 known gap for real**: business-outcome detection now
   runs before every step (and once more after the loop), not just at the end — a not-found

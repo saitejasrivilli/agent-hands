@@ -206,10 +206,6 @@ escalation is strictly opt-in.
 ## Known limitations (tracked, not accidental)
 - `run-agent`'s locator strategy is role/accessible-name only (no fallback chain yet) — the
   Replayer's multi-strategy fallback is not used during discovery, only during replay.
-- Compiled artifacts' extracted output shape isn't stable across which locator strategy
-  resolves (bare value vs. full row text) — see DECISIONS.md. Not a correctness bug (both are
-  truthy successful extractions), but worth a real fix (structured label/value parsing) if
-  time allows.
 - `retryStep` recovery action is a declared no-op (the step loop naturally retries on its next
   pass) — only `dismiss` and `reloadAndRetry` perform an explicit action.
 - `lookup-savings-balance-risky-demo.json` marks a harmless step risky purely to exercise the
@@ -227,6 +223,14 @@ escalation is strictly opt-in.
 - `REPORT.md`: the 7 required sections (Architecture, Artifact schema, Determinism & error
   handling, Heterogeneity & multi-tenant, Escalation & handoff, Safety, Cuts), drawn from the
   decisions logged throughout V0-V5 rather than reconstructed after the fact.
+
+**Post-V6 hardening**
+- Fixed the compiled-artifact output-shape inconsistency flagged in REPORT.md's original Cuts
+  list: the compiler's derived fallback locator matched a whole `<tr>` (label+value
+  concatenated) instead of just the value cell. Fixed in both the compiler (future compiled
+  artifacts) and the existing hand-authored capability files (`td:nth-child(2)` scoping).
+  Re-verified all 4 affected artifacts — consistent bare-value output regardless of which
+  locator strategy resolves; business-outcome and escalation paths regression-checked.
 
 ## Deliverables checklist (per the brief's Section 6)
 - `/README.md` — this file: setup, exact demo commands, what's built.

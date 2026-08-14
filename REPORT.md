@@ -172,10 +172,14 @@ allowlist yet to enforce against.
   definition of done only required the replay path.
 - Broader redaction rule set and a real risky-action approval record.
 
+**Already fixed post-write-up** (found via this section's own honesty, then closed): the
+output-shape inconsistency in compiled artifacts — the derived fallback locator matched a
+whole table row (label+value concatenated) instead of the value cell alone. Fixed by scoping
+the fallback (`td:nth-child(2)`) in both the compiler and existing capability files;
+re-verified all 4 affected artifacts return consistent bare-value output.
+
 **Next, in priority order (mirrors the brief's own eval weighting):**
-1. Fix the known output-shape inconsistency in compiled artifacts (bare value vs. full row
-   text depending on which locator strategy resolves) — needs structured label/value parsing.
-2. Wire escalation into discovery, not just replay.
-3. Implement route-canonicalization concretely (one base-artifact + tenant-override example).
-4. Broaden redaction patterns; add a multi-run stability signal (replay N times, report
+1. Wire escalation into discovery, not just replay.
+2. Implement route-canonicalization concretely (one base-artifact + tenant-override example).
+3. Broaden redaction patterns; add a multi-run stability signal (replay N times, report
    locator hit-rate) — the logging hook already exists.

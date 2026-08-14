@@ -1,0 +1,8 @@
+{"ts":"2026-08-14T20:35:53.709Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-compiled","inputs":{"memberId":"67890"}}}
+{"ts":"2026-08-14T20:35:54.245Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-14T20:35:54.272Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-14T20:35:54.275Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-14T20:35:54.322Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-14T20:35:54.339Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-14T20:35:54.343Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-14T20:35:54.347Z","actor":"system","event":"replay_success","detail":{"outputs":{"savings_balance":"132.10 USD"}}}

@@ -66,7 +66,7 @@
         "strategies": [
           {
             "kind": "cssPath",
-            "value": "table[border='1'] tr:has-text('Savings Balance')"
+            "value": "table[border='1'] tr:has-text('Savings Balance') td:nth-child(2)"
           }
         ]
       },
