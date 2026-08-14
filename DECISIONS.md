@@ -86,6 +86,15 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   (`AGENT_MAX_STEPS`, `AGENT_TIMEOUT_MS`). Chosen as generous-but-bounded defaults for a
   3-5 step flow; not tuned further since V1's only requirement was one genuine successful run.
 
+- **Verified reproducibility is intentionally asymmetric**: ran discovery twice with identical
+  goal/target — both reached the correct answer but used slightly different tool-call phrasing
+  (one run's model added an extra output key `current_savings_balance` alongside
+  `savings_balance`). This is expected LLM non-determinism, not a bug — it's the reason
+  discovery and replay are separate paths. Ran replay 3x with identical input — byte-identical
+  output every time, confirming the Replayer itself is deterministic as designed. This
+  asymmetry (discovery varies, replay doesn't) is a good REPORT.md talking point for
+  "Determinism & error handling."
+
 ## Decisions pending
 - Exact stop-condition thresholds (max steps, timeout values) for the agent loop
 - Exact set of "risky/irreversible" action types requiring explicit confirm step
