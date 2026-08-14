@@ -200,9 +200,23 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   evidence trail (`intervention.json` + interleaved system/human log entries + before/after
   screenshots) inspected and confirmed correct.
 
-## Decisions pending
-- Exact stop-condition thresholds (max steps, timeout values) for the agent loop
-- Exact set of "risky/irreversible" action types requiring explicit confirm step
-- Redaction field-pattern list (which field names/regexes trigger redaction)
-- Whether to implement the route-canonicalization stretch (multi-tenant credibility) or leave fully design-only
-- Mock Operator Surface: bare HTML page vs CLI — leaning HTML page for screenshot-ability in evidence
+- **V6 — REPORT.md written from the decision log, not reconstructed from memory**: every
+  claim in REPORT.md traces to something actually built and verified in V0-V5 (this file).
+  Trimmed from an initial ~2100-word draft to ~1460 words to fit the brief's "~1-3 pages"
+  guidance without losing any verified claim — cut redundant restatement, not substance.
+- **Dashboard/web UI explicitly declined** (see conversation record, user asked "how to
+  approach V4/UI" earlier in the project): recommended CLI-only, deferred a mock operator
+  console to V5 rather than building a general dashboard — matches the brief's "no feature
+  breadth" guidance and was a judgment call made and confirmed mid-project, not a default.
+- **Project complete at V6**: all 6 core requirements from Section 3 are real and verified;
+  all 3 required deliverables (README, REPORT.md, /evidence/) are in place. Remaining items
+  are documented as future work in REPORT.md §7, not silently missing.
+
+## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
+- ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
+- ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No
+  real mutating capability built to carry it naturally — left as future work.
+- ~~Redaction field-pattern list~~ — resolved: key-name + SSN value-pattern (V4). Left as
+  future work: broaden beyond this illustrative set for production use.
+- Route-canonicalization stretch — left fully design-only (REPORT.md §4); not implemented.
+- ~~Mock Operator Surface~~ — resolved: bare HTML page, screenshot embedded directly (V5).

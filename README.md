@@ -4,9 +4,9 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V5** (all core requirements from the brief's Section 3 are now real: discovery,
-artifact compilation, deterministic replay with error taxonomy, safety guardrails, and
-human-in-the-loop escalation with live-session handoff). See
+Status: **V6 — complete.** All core requirements (Section 3) are real: discovery, artifact
+compilation, deterministic replay with error taxonomy, safety guardrails, and human-in-the-loop
+escalation with live-session handoff. See `REPORT.md` for the design write-up,
 `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for design, and
 `DECISIONS.md` for the running decision log.
 
@@ -223,6 +223,17 @@ escalation is strictly opt-in.
   surface-agnostic and could be wired into the Agent Loop too, but wasn't required for V5's
   definition of done.
 
+**V6 — write-up**
+- `REPORT.md`: the 7 required sections (Architecture, Artifact schema, Determinism & error
+  handling, Heterogeneity & multi-tenant, Escalation & handoff, Safety, Cuts), drawn from the
+  decisions logged throughout V0-V5 rather than reconstructed after the fact.
+
+## Deliverables checklist (per the brief's Section 6)
+- `/README.md` — this file: setup, exact demo commands, what's built.
+- `/REPORT.md` — design write-up, 7 required headings.
+- `/evidence/` — real discovery run, real replay runs covering all 3 `Result` kinds, a
+  guardrail-block example, a redaction example, and a full escalation/handoff run.
+
 ## Roadmap
-See `BUILD_PLAN.md`. Next: V6 — REPORT.md write-up + design-only heterogeneity/multi-tenant
-sections (the remaining required deliverables).
+See `BUILD_PLAN.md` for the full versioned build history. See `REPORT.md` §7 ("Cuts") for
+what's deliberately left out and what would come next with more time.
