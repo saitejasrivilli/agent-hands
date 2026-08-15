@@ -124,9 +124,12 @@ substitution mechanism); `allowlistScope.domains` already anticipates per-tenant
 
 **Drift detection**: every replay now writes a per-step `drift.jsonl` entry (primary/fallback/
 miss, `src/artifact/drift.ts`) — verified distinguishing a member the primary strategy resolves
-for from one it doesn't (falls through to the label-based fallback instead). A hit-rate
-aggregation across many runs/tenants isn't built (the brief says not to build full
-infrastructure) — this is the minimal real per-run signal that aggregation would consume.
+for from one it doesn't (falls through to the label-based fallback instead). `npm run
+drift-report` aggregates those entries across every `evidence/replay-*/` directory into a
+per-capability fallback/miss rate (`scripts/drift-report.ts`) — a rising rate is the concrete
+"re-record this artifact" signal. Deliberately a script, not a service: the brief says not to
+build full aggregation infrastructure, and a scan over evidence files is the minimal real
+version of that signal, not a stub.
 
 ## 5. Escalation & handoff
 

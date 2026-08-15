@@ -21,12 +21,24 @@ design, and `DECISIONS.md` for the running decision log.
 ```bash
 npm test
 ```
-16 tests (Node's built-in test runner, no extra dependency), true integration tests against a
+24 tests (Node's built-in test runner, no extra dependency), true integration tests against a
 real spawned target-app instance and real Playwright — covers all 3 `Result` kinds, both
 guardrail mechanisms (allowlist + risky-action gate against the real mutating capability),
 redaction (including a regression test for a false-positive bug found while broadening the
-pattern set), and the tenant-override merge. Self-contained: spawns/kills its own target-app
-processes on dedicated ports, cleans up its own evidence directories.
+pattern set), route canonicalization, the tenant-override merge, and the Anthropic client's
+model/responseId/usage parsing. Self-contained: spawns/kills its own target-app processes on
+dedicated ports, cleans up its own evidence directories.
+
+## Drift report
+
+```bash
+npm run drift-report
+```
+Aggregates the per-step `drift.jsonl` signal (`src/artifact/drift.ts`) that every replay writes
+— which locator strategy actually resolved, primary or fallback — across every
+`evidence/replay-*/` directory into a per-capability fallback/miss rate. A rising rate is the
+concrete signal to re-record an artifact or add a locator override, before it becomes a hard
+failure in production.
 
 ## Setup
 
