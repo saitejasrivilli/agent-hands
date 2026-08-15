@@ -402,6 +402,26 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
     --env-file=.env --import tsx src/web/server.ts`) — found this immediately when
     `/api/discover` returned `ANTHROPIC_API_KEY not set` under a plain `tsx` invocation.
 
+- **V12 — checked the brief PDF directly for what UI it actually asks for**, since the V11
+  dashboard request risked being mistaken for an in-scope deliverable. The brief's only actual
+  UI requirement is the bare/mock operator console (Section 3.6) — no mention anywhere of a
+  triggering dashboard or run viewer. Fixed REPORT.md's two stale lines (Architecture §1 and
+  Cuts §7) that still said a dashboard was "declined" — now accurately describe it as
+  existing-but-non-graded, built after submission-quality work was done.
+  - **Rewrote the operator console** (`src/escalation/manager.ts`'s inline HTML) to be
+    understandable by both a non-technical bank-staff operator and an engineer from the same
+    page: a plain-English explanation of what's stuck and why leads, with the raw technical
+    reason available one click away (`<details>`), not hidden but not primary either. New
+    `src/escalation/plain-language.ts` (`explainReason()`) is a small, pure, unit-tested
+    mapping — kept separate from the escalation mechanism itself (policy vs. mechanism, same
+    pattern as `business-outcomes.ts`/`redaction-patterns.ts`).
+  - Verified end-to-end for real after the rewrite: triggered a genuine escalation, confirmed
+    the plain-language sentence rendered correctly and differently from the technical detail,
+    performed the manual fix, resumed, confirmed `Result.success` — the underlying mechanism
+    (same live session, same control-transfer model) is unchanged, only presentation changed.
+  - 4 new unit tests for `explainReason()`'s mapping (locator failure / timeout / guardrail
+    block / unrecognized-reason fallback). Full suite: 28/28 pass.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

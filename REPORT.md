@@ -27,8 +27,10 @@ Agent Loop, Replayer, and Escalation Manager all call `observe()`/`act()`/`snaps
 never talk to Playwright directly — what makes Section 3.7 (heterogeneity) a real extension
 point rather than a rewrite (Section 4).
 
-Trade-offs: CLI over a dashboard (a web UI was considered and explicitly declined — see
-Cuts, it's the kind of feature-breadth the brief says isn't rewarded). Artifact and transcript
+Trade-offs: CLI is the graded interface (a triggering dashboard was initially declined as the
+kind of feature-breadth the brief doesn't reward). A convenience web dashboard exists in the
+repo (`npm run dashboard`) but is explicitly non-graded, personal-use tooling built after
+submission-quality work was complete — see Cuts. Artifact and transcript
 are separate files in separate directories — the transcript (raw discovery evidence) is not
 the artifact (the compiled, reviewable contract); keeping them apart reinforces that
 distinction.
@@ -141,8 +143,11 @@ implemented and verified for real rather than left as a claim.
 
 **Take control of the live session — literally the same one.** `escalate()` starts a small
 local HTTP server bound to the exact `PlaywrightAdapter`/`Page` the paused replay was using.
-No new browser context. The operator page (bare/mock, per the brief's own scope note) renders
-the live screenshot and a manual-action form plus "Resume."
+No new browser context. The operator page (bare/mock, per the brief's own scope note) leads
+with a plain-English explanation of what's stuck and why (`explainReason()`), the live
+screenshot, then a manual-action form plus "Resume" — designed so a non-technical operator and
+an engineer debugging the run both get what they need without either being underserved; the
+raw technical reason is still shown, just secondary.
 
 **Control-transfer model.** Instead of a separately-polled `controlState` flag, the replay
 loop is structurally blocked on an `await` for the duration of human control — Node's
@@ -194,8 +199,19 @@ has no artifact/allowlist yet to enforce against.
 - Multi-tenant / desktop implementations — out of scope per 3.7; addressed in design (§4).
 - Real-time co-browsing console — out of scope per 3.6's own scope note; built a bare/mock
   console with a real handoff mechanism underneath instead.
-- A dashboard/web UI for triggering runs — CLI already satisfies the README's command
-  requirement; declined deliberately, not defaulted into.
+- A dashboard/web UI **as a graded deliverable** — the brief's only actual UI requirement is
+  the bare/mock operator console (3.6), already built and polished (see below). A separate
+  convenience dashboard (`npm run dashboard`, `src/web/server.ts`) does exist in the repo — it
+  was built afterward, for personal use, explicitly not in service of any grading criterion,
+  and every screen just calls the same functions the CLI does so it can't diverge from CLI
+  behavior. Noted here so it isn't mistaken for something the brief asked for.
+- **The bare/mock operator console (3.6) was rewritten for clarity**, not left at a functional
+  minimum: a plain-English explanation of what's stuck and why sits above the raw technical
+  reason (still shown, in a `<details>`), so a non-technical bank-staff operator and an
+  engineer debugging the same run both get what they need from one page. `explainReason()`
+  (`src/escalation/plain-language.ts`) is a small, unit-tested, pure mapping — the escalation
+  mechanism underneath (same live session, same control-transfer model) is unchanged and
+  re-verified end-to-end after the rewrite.
 - A real `axPath`/desktop locator adapter — the brief explicitly doesn't expect desktop
   support, and there's no real desktop target in this project to verify one against. Building
   it anyway would be exactly the kind of unverified, speculative code this section exists to

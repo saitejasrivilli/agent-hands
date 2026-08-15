@@ -175,9 +175,12 @@ TARGET_URL="http://localhost:4000/" npx tsx src/cli.ts replay \
 
 # it will block and print:
 #   Operator console listening on http://localhost:4100 (waiting for human)
-# open that URL in a browser — you'll see the live screenshot, the exact
-# reason it's stuck, and a form to perform one manual action, e.g.:
-#   actionType=extract, role=cell, name="4820.55 USD", extractAs=balance
+# open that URL in a browser — it leads with a plain-English explanation of
+# what's stuck and why (technical detail is one click away, in a "Technical
+# detail" expander), the live screenshot, and a form to perform one manual
+# action, e.g.:
+#   Action: Read a value off the page
+#   Which control?: cell   Labeled/named: 4820.55 USD   Save as: balance
 # then click "Resume automation"
 ```
 Expected: the replay (terminal A) completes with `"kind": "success"` using the value the
