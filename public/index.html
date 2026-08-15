@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Member Services — Automation Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🏦 Member Services <span class="brand-sub">Automation Console</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="discover">Discover</button>
+    <button class="tab-btn" data-tab="capabilities">Capabilities</button>
+    <button class="tab-btn" data-tab="replay">Replay</button>
+    <button class="tab-btn" data-tab="evidence">Evidence</button>
+  </nav>
+</header>
+
+<main>
+  <!-- DISCOVER -->
+  <section id="tab-discover" class="tab-panel active">
+    <div class="card">
+      <h2>1. Discover a capability</h2>
+      <p class="muted">An LLM watches the live app and works out how to accomplish a goal, step by step. This only
+        needs to happen once per capability — after this, replay does it deterministically, with no model involved.</p>
+      <label>Goal (plain English)</label>
+      <input id="discover-goal" type="text" placeholder='e.g. look up member 12345 and read their current savings balance' />
+      <label>Target URL</label>
+      <input id="discover-target" type="text" value="http://localhost:4000/" />
+      <button id="discover-run" class="primary">Run discovery</button>
+      <p class="hint">Escalation (human takeover if the agent gets stuck) is CLI-only for now — see the terminal
+        command shown after a stuck run.</p>
+      <div id="discover-status" class="status-box hidden"></div>
+      <div id="discover-result" class="result-box hidden"></div>
+    </div>
+  </section>
+
+  <!-- CAPABILITIES -->
+  <section id="tab-capabilities" class="tab-panel">
+    <div class="card">
+      <h2>2. Capabilities</h2>
+      <p class="muted">Every discovery run compiles into one of these — a typed, reviewable contract an AI agent (or
+        you) can invoke by name, with declared inputs, outputs, and a success condition.</p>
+      <button id="capabilities-refresh">Refresh</button>
+      <div id="capabilities-list"></div>
+    </div>
+  </section>
+
+  <!-- REPLAY -->
+  <section id="tab-replay" class="tab-panel">
+    <div class="card">
+      <h2>3. Replay a capability</h2>
+      <p class="muted">Deterministic. No LLM involved. Same inputs always produce the same steps.</p>
+      <label>Capability</label>
+      <select id="replay-capability"></select>
+      <div id="replay-inputs"></div>
+      <button id="replay-run" class="primary">Run replay</button>
+      <div id="replay-result" class="result-box hidden"></div>
+    </div>
+  </section>
+
+  <!-- EVIDENCE -->
+  <section id="tab-evidence" class="tab-panel">
+    <div class="card wide">
+      <h2>4. Evidence — every run, in plain language</h2>
+      <p class="muted">Discovery and replay runs both leave a full trail: what happened, why, and what the result
+        was. Click a run to see the step-by-step story.</p>
+      <button id="evidence-refresh">Refresh</button>
+      <table id="evidence-table">
+        <thead><tr><th>Type</th><th>Goal / Capability</th><th>Result</th><th>When</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card wide" id="evidence-detail-card" style="display:none">
+      <h2 id="evidence-detail-title">Run detail</h2>
+      <div id="evidence-detail"></div>
+    </div>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

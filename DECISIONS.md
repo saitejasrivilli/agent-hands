@@ -366,6 +366,42 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
      the tool-call and no-tool-call cases. Also added `replayer.test.ts`'s drift assertion.
      24/24 tests pass.
 
+- **V11 — unified dashboard, requested explicitly** (a dashboard was considered and declined
+  earlier in the project as feature-breadth not rewarded by the grading brief; this request is
+  for personal/demo use beyond the graded submission, so the earlier trade-off doesn't apply
+  here — noted, not silently reversed). `src/web/server.ts` (Express) + static
+  `public/index.html`/`style.css`/`app.js` (vanilla JS, no framework, no build step — matches
+  the project's dependency-minimal pattern throughout). Every API endpoint is a thin wrapper
+  around the exact same functions the CLI calls (`runDiscovery`, `compileFromTranscriptFile`,
+  `replay`) — the dashboard cannot drift out of sync with CLI behavior because it isn't a
+  separate implementation, and the CLI itself is completely untouched/still fully functional.
+  Four screens: Discover (plain-English goal → live LLM run), Capabilities (typed
+  inputs/outputs/risky-steps per compiled artifact), Replay (generated input form per
+  capability, runs deterministically), Evidence (every past run rendered as a readable
+  step-by-step story with reasoning, screenshots, drift signal, and approvals — not raw JSON).
+  **Deliberately scoped out**: live escalation-in-progress inside the dashboard. Escalation
+  blocks on a separate ephemeral operator-console server until a human resolves it; that
+  mechanism is already real and verified via the CLI's `--escalate` flag. Building a second,
+  necessarily-worse version of the same handoff inside the dashboard would be redundant,
+  unverified surface area — exactly what several rounds of review on this project have been
+  about cutting elsewhere. The dashboard's Discover tab points to the CLI command instead when
+  a run gets stuck.
+  - Found one real bug while verifying: `summarizeRun`'s discovery-outcome classification only
+    checked for `discovery_success`/`discovery_stuck` log events, so the V9 guardrail-blocked
+    discovery run (which logs `guardrail_blocked` and returns directly, not via
+    `stuckOrEscalate`) showed as `"unknown"` in the Evidence tab. Fixed by also checking for
+    `guardrail_blocked`; re-verified the affected run now shows `"stuck"` with the correct
+    reason.
+  - Verified every endpoint against the real system, not mocked: `/api/capabilities` (real
+    parsed artifact files), `/api/evidence` + `/api/evidence/:id` (real evidence directories,
+    including drift/approvals/screenshots), `/api/discover` (a real Anthropic call, end to
+    end), `/api/compile` (compiled a real transcript, wrote a real capability file),
+    `/api/replay` (both a normal success on unseen data and a real risky-action block without
+    confirmation). Full existing test suite (24 tests) re-run and unaffected.
+  - `npm run dashboard` needs `.env` loaded the same way `run-agent` does (`node
+    --env-file=.env --import tsx src/web/server.ts`) — found this immediately when
+    `/api/discover` returned `ANTHROPIC_API_KEY not set` under a plain `tsx` invocation.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

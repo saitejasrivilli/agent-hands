@@ -4,17 +4,45 @@ Computer-use automation system: an LLM discovers how to complete a task inside a
 (no API), the successful run is recorded as a typed, versioned, reusable **capability**, and
 that capability replays deterministically afterward with no model in the loop.
 
-Status: **V10 — complete**, hardened through three rounds of review. All core requirements
-(Section 3) are real: discovery, artifact compilation, deterministic replay with error
-taxonomy, safety guardrails (enforced in both discovery and replay), and human-in-the-loop
-escalation with live-session handoff — including escalation from a genuine, unengineered
-production failure (a slow backend). Discovery evidence now carries real, unforgeable proof of
-each LLM call (Anthropic's own response id + token usage), and every replay records a
-per-step drift signal (which locator strategy actually resolved). Plus a verified cross-tenant
-reuse demo, generic route canonicalization, a real mutating capability backing the
-risky-action gate with its own audit record, and an automated test suite. See `REPORT.md` for
-the design write-up, `BUILD_PLAN.md` for the full versioned roadmap, `HLD.md` / `LLD.md` for
-design, and `DECISIONS.md` for the running decision log.
+Status: **V11 — complete**, hardened through three rounds of review, plus a unified dashboard.
+All core requirements (Section 3) are real: discovery, artifact compilation, deterministic
+replay with error taxonomy, safety guardrails (enforced in both discovery and replay), and
+human-in-the-loop escalation with live-session handoff — including escalation from a genuine,
+unengineered production failure (a slow backend). Discovery evidence carries real, unforgeable
+proof of each LLM call (Anthropic's own response id + token usage), and every replay records a
+per-step drift signal (which locator strategy actually resolved, aggregated by
+`npm run drift-report`). Plus a verified cross-tenant reuse demo, generic route
+canonicalization, a real mutating capability backing the risky-action gate with its own audit
+record, and an automated test suite. See `REPORT.md` for the design write-up, `BUILD_PLAN.md`
+for the full versioned roadmap, `HLD.md` / `LLD.md` for design, and `DECISIONS.md` for the
+running decision log.
+
+## Dashboard (optional — everything above works from the CLI alone)
+
+```bash
+npm run dashboard
+# open http://localhost:4200
+```
+
+A single web UI covering the whole flow, for anyone (technical or not) to drive and understand
+without a terminal — every screen calls the exact same functions the CLI calls
+(`runDiscovery`/`compileFromTranscriptFile`/`replay`), so it can never drift out of sync with
+CLI behavior:
+
+- **Discover** — enter a goal in plain English, watch the LLM drive the live app, see the
+  outcome.
+- **Capabilities** — every compiled capability, its typed inputs/outputs, and which steps are
+  risky (require confirmation).
+- **Replay** — pick a capability, fill in a generated input form, run it deterministically.
+- **Evidence** — every past run as a readable story (step-by-step, with reasoning, screenshots,
+  drift signal, and risky-action approvals), not raw JSON files to dig through.
+
+**Deliberately left out of the dashboard**: live escalation-in-progress. Escalation blocks on a
+*separate* ephemeral operator-console server until a human resolves it (see
+`src/escalation/manager.ts`) — that mechanism is real, verified, and already fully usable via
+the CLI's `--escalate` flag (see demo command 7 below). Half-building a second, weaker version
+of the same thing inside the dashboard would be redundant, unverified surface area for no real
+benefit — the dashboard's Discover tab links to the CLI command instead when a run gets stuck.
 
 ## Automated tests
 
