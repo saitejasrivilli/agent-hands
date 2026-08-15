@@ -10,6 +10,7 @@
     "target-app": "tsx target-app/server.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "drift-report": "tsx scripts/drift-report.ts",
+    "sla-report": "tsx scripts/sla-report.ts",
     "dashboard": "node --env-file=.env --import tsx src/web/server.ts"
   },
   "dependencies": {

@@ -1,6 +1,0 @@
-{
-  "capabilityId": "lookup-savings-balance-escalation-demo",
-  "stepIndex": 2,
-  "reason": "locator resolution failed: No locator strategy resolved uniquely: [{\"kind\":\"role\",\"value\":\"cell\",\"meta\":{\"name\":\"THIS_LABEL_DOES_NOT_EXIST\"}}]",
-  "screenshotPath": "evidence/replay-lookup-savings-balance-escalation-demo-1786738444058/screenshots/failure-step-2.png"
-}

@@ -163,6 +163,14 @@ broken locator for an automated retry.
 the live session → resumed → `Result.success` using the human-provided value. Evidence trail
 (`intervention.json` + one interleaved system/human log) inspected and confirmed.
 
+**SLA tracking**, added after checking real production HITL practice against ours: every
+intervention gets a periodic heartbeat (`escalation_pending`) while unresolved and a final
+`sla.jsonl` record (`timeoutMs`, `elapsedMs`, `breached`) whether a human resumed it in time or
+it timed out unattended — `npm run sla-report` aggregates this across runs into a per-capability
+breach rate. Verified genuinely both ways: one escalation resolved in ~13s (`breached: false`),
+one deliberately left unattended breached its 6s timeout exactly (`elapsedMs: 6008`,
+`breached: true`), and the report correctly showed a 50% breach rate across both.
+
 ## 6. Safety
 
 **Allowlist enforcement** at a single choke point (`enforceGuardrails`, before every step's

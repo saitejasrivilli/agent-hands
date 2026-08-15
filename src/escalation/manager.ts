@@ -37,9 +37,19 @@ export async function escalate(
 ): Promise<EscalationResult> {
   const port = opts.port ?? 4100;
   const timeoutMs = opts.timeoutMs ?? 5 * 60_000;
+  const raisedAt = Date.now();
 
-  logger.log("system", "intervention_raised", { ...context });
+  logger.log("system", "intervention_raised", { ...context, timeoutMs });
   logger.writeJson("intervention.json", context);
+
+  // SLA heartbeat: a periodic "still waiting" signal while an intervention
+  // is unresolved — real production HITL practice (see DECISIONS.md), not
+  // just a silent timeout. Interval is a fraction of the total budget so at
+  // least a couple of heartbeats land even on short demo timeouts.
+  const heartbeatMs = Math.max(5_000, Math.floor(timeoutMs / 4));
+  const heartbeat = setInterval(() => {
+    logger.log("system", "escalation_pending", { elapsedMs: Date.now() - raisedAt, timeoutMs });
+  }, heartbeatMs);
 
   let controlState: ControlState = "human";
   const outputs: Record<string, unknown> = {};
@@ -99,10 +109,20 @@ export async function escalate(
 
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
   await Promise.race([resumeSignal, timeout]);
+  clearInterval(heartbeat);
 
-  if (controlState === "human") {
-    logger.log("system", "escalation_timed_out", { timeoutMs });
+  const elapsedMs = Date.now() - raisedAt;
+  const breached = controlState === "human"; // still "human" means resume never came
+  if (breached) {
+    logger.log("system", "escalation_timed_out", { timeoutMs, elapsedMs });
   }
+  logger.recordSla({
+    capabilityId: context.capabilityId,
+    stepIndex: context.stepIndex,
+    timeoutMs,
+    elapsedMs,
+    breached,
+  });
 
   await new Promise<void>((resolve) => server.close(() => resolve()));
 

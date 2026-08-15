@@ -422,6 +422,23 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   - 4 new unit tests for `explainReason()`'s mapping (locator failure / timeout / guardrail
     block / unrecognized-reason fallback). Full suite: 28/28 pass.
 
+- **V13 — SLA tracking for escalation, closing a gap surfaced by researching real production
+  HITL practice** (web search cross-check against this project's own escalation design; see
+  conversation record — Zylos/general RPA sources both call out SLA tracking/timeout-based
+  escalation as standard, which this project had a timeout for but no tracking of). Added:
+  - `EvidenceLogger.recordSla()` → `sla.jsonl` per run (`timeoutMs`, `elapsedMs`, `breached`).
+  - A periodic heartbeat (`escalation_pending`, every `max(5s, timeoutMs/4)`) logged while an
+    intervention is unresolved — a real "still waiting" signal, not silence until timeout.
+  - `scripts/sla-report.ts` (mirrors `drift-report.ts`'s pattern exactly): aggregates
+    `sla.jsonl` across every evidence dir into a per-capability breach rate + average resolve
+    time. Deliberately a script, not a service, per the brief's own guidance.
+  - Verified genuinely, both outcomes: one real escalation resolved in ~13s
+    (`breached: false`), one deliberately left unattended breached its 6-second timeout
+    exactly (`elapsedMs: 6008`, `breached: true`, one heartbeat fired at 5005ms as designed).
+    `npm run sla-report` correctly aggregated both into a 50% breach rate. Regenerated the
+    committed canonical escalation evidence example so it includes `sla.jsonl` (the prior
+    committed example predated this feature). Full suite (28 tests) re-run, unaffected.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

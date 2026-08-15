@@ -68,6 +68,19 @@ Aggregates the per-step `drift.jsonl` signal (`src/artifact/drift.ts`) that ever
 concrete signal to re-record an artifact or add a locator override, before it becomes a hard
 failure in production.
 
+## SLA report
+
+```bash
+npm run sla-report
+```
+Aggregates `sla.jsonl` — recorded by every escalation (`escalate()`), whether discovery or
+replay triggered it — into a per-capability breach rate and average resolve time. Every
+intervention gets a periodic "still waiting" heartbeat (`escalation_pending`) while unresolved,
+and a final `breached: true/false` record when it's either resumed by a human or times out
+unattended. A rising breach rate means either the timeout is too short, or there aren't enough
+people watching the operator console — a real production HITL concern, not just a per-run
+timeout that silently gives up.
+
 ## Setup
 
 ```bash

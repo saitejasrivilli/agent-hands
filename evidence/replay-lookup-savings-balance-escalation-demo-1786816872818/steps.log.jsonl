@@ -1,0 +1,13 @@
+{"ts":"2026-08-15T18:01:12.819Z","actor":"system","event":"replay_started","detail":{"capabilityId":"lookup-savings-balance-escalation-demo","inputs":{"memberId":"12345"}}}
+{"ts":"2026-08-15T18:01:13.743Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-15T18:01:13.777Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-15T18:01:13.780Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-15T18:01:13.825Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-15T18:01:13.840Z","actor":"system","event":"step_start","detail":{"index":2,"action":"extract"}}
+{"ts":"2026-08-15T18:01:14.074Z","actor":"system","event":"step_failed","detail":{"index":2,"reason":"locator_resolution","screenshotPath":"evidence/replay-lookup-savings-balance-escalation-demo-1786816872818/screenshots/failure-step-2.png","axTreePath":"evidence/replay-lookup-savings-balance-escalation-demo-1786816872818/screenshots/failure-step-2.ax.json"}}
+{"ts":"2026-08-15T18:01:14.074Z","actor":"system","event":"intervention_raised","detail":{"capabilityId":"lookup-savings-balance-escalation-demo","stepIndex":2,"reason":"locator_resolution: No locator strategy resolved uniquely: [{\"kind\":\"role\",\"value\":\"cell\",\"meta\":{\"name\":\"THIS_LABEL_DOES_NOT_EXIST\"}}]","screenshotPath":"evidence/replay-lookup-savings-balance-escalation-demo-1786816872818/screenshots/failure-step-2.png","timeoutMs":60000}}
+{"ts":"2026-08-15T18:01:14.485Z","actor":"human","event":"manual_action","detail":{"actionType":"extract","role":"cell","name":"4820.55 USD"}}
+{"ts":"2026-08-15T18:01:14.485Z","actor":"human","event":"manual_extract","detail":{"extractAs":"balance","value":"4820.55 USD"}}
+{"ts":"2026-08-15T18:01:14.520Z","actor":"system","event":"control_resumed","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-15T18:01:14.522Z","actor":"system","event":"escalation_resolved","detail":{"humanActionsCount":1}}
+{"ts":"2026-08-15T18:01:14.530Z","actor":"system","event":"replay_success","detail":{"outputs":{"balance":"4820.55 USD"}}}

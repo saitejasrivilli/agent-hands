@@ -45,11 +45,21 @@ export interface ApprovalRecord {
   action: string;
 }
 
+export interface SlaRecord {
+  ts: string;
+  capabilityId: string;
+  stepIndex: number;
+  timeoutMs: number;
+  elapsedMs: number;
+  breached: boolean;
+}
+
 export class EvidenceLogger {
   readonly dir: string;
   private logPath: string;
   private approvalsPath: string;
   private driftPath: string;
+  private slaPath: string;
 
   constructor(evidenceRoot: string, runId: string) {
     this.dir = join(evidenceRoot, runId);
@@ -59,6 +69,7 @@ export class EvidenceLogger {
     if (!existsSync(this.logPath)) writeFileSync(this.logPath, "");
     this.approvalsPath = join(this.dir, "approvals.jsonl");
     this.driftPath = join(this.dir, "drift.jsonl");
+    this.slaPath = join(this.dir, "sla.jsonl");
   }
 
   log(actor: LogEntry["actor"], event: string, detail?: Record<string, unknown>) {
@@ -82,6 +93,17 @@ export class EvidenceLogger {
   // across many replays without scanning the full interleaved log.
   recordDrift(sample: Record<string, unknown>) {
     appendFileSync(this.driftPath, JSON.stringify(sample) + "\n");
+  }
+
+  // Distinct from the general step log: one line per intervention's
+  // resolution, whether a human resolved it in time or it breached its
+  // timeout unattended. Real production HITL practice tracks this (see
+  // DECISIONS.md) — a rising breach rate/average elapsed time is the signal
+  // that either the timeout is too short or there aren't enough people
+  // watching the operator console, before it becomes silent stuck automation.
+  recordSla(record: Omit<SlaRecord, "ts">) {
+    const entry: SlaRecord = { ts: new Date().toISOString(), ...record };
+    appendFileSync(this.slaPath, JSON.stringify(entry) + "\n");
   }
 
   writeResult(result: unknown) {
