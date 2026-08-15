@@ -99,7 +99,14 @@ export function compileArtifact(transcript: TranscriptEntry[], opts: CompileOpti
       // strategy's bare-value output. Scoping to the row's second cell
       // (the value column in this table's label/value layout) makes output
       // shape consistent regardless of which strategy resolves.
-      const label = deriveRowLabel(entry.observation.ax, accessibleName);
+      // A transcript entry with a missing/malformed `observation.ax` (e.g.
+      // from a truncated or corrupted discovery run) used to crash the
+      // compiler with an unhelpful "Cannot read properties of undefined"
+      // instead of degrading gracefully. Found via adversarial testing —
+      // defaulting to "" means deriveRowLabel just finds no fallback
+      // (honest: the compiler couldn't derive one from this entry), rather
+      // than treating a data-quality problem as a hard crash.
+      const label = deriveRowLabel(entry.observation?.ax ?? "", accessibleName);
       if (label) {
         strategies.push({ kind: "cssPath", value: `table[border='1'] tr:has-text('${label}') td:nth-child(2)` });
       }
@@ -122,7 +129,22 @@ export function compileArtifact(transcript: TranscriptEntry[], opts: CompileOpti
     ? { kind: "elementText" as const, target: (lastExtractStep as Step).target }
     : { kind: "urlMatches" as const, expected: ".*" };
 
-  const canonicalRoutes = [...new Set(transcript.map((entry) => canonicalizeRoute(entry.observation.url)))];
+  // Same defensive treatment as the ax-snapshot fallback above: a missing/
+  // invalid observation.url shouldn't crash compilation, just be skipped
+  // from the canonical-routes list (it's metadata, not load-bearing).
+  const canonicalRoutes = [
+    ...new Set(
+      transcript
+        .map((entry) => {
+          try {
+            return canonicalizeRoute(entry.observation?.url ?? "");
+          } catch {
+            return null;
+          }
+        })
+        .filter((r): r is string => r !== null)
+    ),
+  ];
 
   return {
     capabilityId: opts.capabilityId,

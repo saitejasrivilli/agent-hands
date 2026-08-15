@@ -103,12 +103,28 @@ export async function escalate(
     resolveResume();
   });
 
+  // A port already in use (a stale process still holding it, or two
+  // escalations racing on the same default port) is a realistic production
+  // failure, not just a test artifact — found via adversarial testing.
+  // http.Server emits 'error' asynchronously; without this handler, an
+  // EADDRINUSE crashes the whole process uncaught regardless of any
+  // try/catch around escalate() itself (event-emitter errors aren't caught
+  // by synchronous try/catch).
   const server: Server = app.listen(port, () => {
     console.log(`Operator console listening on http://localhost:${port} (waiting for human)`);
   });
+  const listenError = new Promise<never>((_, reject) => {
+    server.once("error", (err) => reject(err));
+  });
 
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
-  await Promise.race([resumeSignal, timeout]);
+  try {
+    await Promise.race([resumeSignal, timeout, listenError]);
+  } catch (err) {
+    clearInterval(heartbeat);
+    logger.log("system", "escalation_port_error", { port, error: err instanceof Error ? err.message : String(err) });
+    throw new Error(`operator console failed to start on port ${port}: ${err instanceof Error ? err.message : String(err)}`);
+  }
   clearInterval(heartbeat);
 
   const elapsedMs = Date.now() - raisedAt;

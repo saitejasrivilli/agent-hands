@@ -1,0 +1,14 @@
+{"ts":"2026-08-15T19:26:35.041Z","actor":"system","event":"replay_started","detail":{"capabilityId":"open-new-subaccount","inputs":{"memberId":"67890","initialDeposit":"20.00","confirm":true}}}
+{"ts":"2026-08-15T19:26:35.978Z","actor":"system","event":"step_start","detail":{"index":0,"action":"type"}}
+{"ts":"2026-08-15T19:26:36.014Z","actor":"system","event":"step_ok","detail":{"index":0}}
+{"ts":"2026-08-15T19:26:36.018Z","actor":"system","event":"step_start","detail":{"index":1,"action":"click"}}
+{"ts":"2026-08-15T19:26:36.066Z","actor":"system","event":"step_ok","detail":{"index":1}}
+{"ts":"2026-08-15T19:26:36.084Z","actor":"system","event":"step_start","detail":{"index":2,"action":"click"}}
+{"ts":"2026-08-15T19:26:36.125Z","actor":"system","event":"step_ok","detail":{"index":2}}
+{"ts":"2026-08-15T19:26:36.141Z","actor":"system","event":"step_start","detail":{"index":3,"action":"type"}}
+{"ts":"2026-08-15T19:26:36.146Z","actor":"system","event":"step_ok","detail":{"index":3}}
+{"ts":"2026-08-15T19:26:36.152Z","actor":"system","event":"step_start","detail":{"index":4,"action":"click"}}
+{"ts":"2026-08-15T19:26:36.201Z","actor":"system","event":"step_ok","detail":{"index":4}}
+{"ts":"2026-08-15T19:26:36.219Z","actor":"system","event":"step_start","detail":{"index":5,"action":"extract"}}
+{"ts":"2026-08-15T19:26:36.223Z","actor":"system","event":"step_ok","detail":{"index":5}}
+{"ts":"2026-08-15T19:26:36.230Z","actor":"system","event":"replay_success","detail":{"outputs":{"confirmationNumber":"SA-100003"}}}

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Artifact, Checkpoint, RecoveryRule, Result, Step } from "../artifact/types.js";
 import { PlaywrightAdapter, LocatorResolutionError } from "../adapters/playwright-adapter.js";
 import { EvidenceLogger } from "../evidence/logger.js";
@@ -95,7 +96,14 @@ export async function replay(
   evidenceRoot: string,
   options: ReplayOptions = {}
 ): Promise<Result> {
-  const runId = `replay-${artifact.capabilityId}-${Date.now()}`;
+  // A random suffix, not just Date.now(), is required for uniqueness: two
+  // concurrent replays of the same capability (a realistic production case
+  // — an agent serving two different customers at once) can start within
+  // the same millisecond and collide on a Date.now()-only id, silently
+  // interleaving their evidence logs and clobbering each other's
+  // result.json. Found via adversarial concurrency testing (see
+  // DECISIONS.md), not theoretical.
+  const runId = `replay-${artifact.capabilityId}-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const logger = new EvidenceLogger(evidenceRoot, runId);
   logger.writeJson("input.json", inputs);
   logger.log("system", "replay_started", { capabilityId: artifact.capabilityId, inputs });

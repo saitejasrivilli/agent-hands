@@ -136,3 +136,23 @@ test("replay: invalid regex in successCondition.expected degrades to failure, no
   const result = await replay(artifact, { memberId: "12345" }, TARGET_URL, EVIDENCE_ROOT);
   assert.equal(result.kind, "failure");
 });
+
+test("replay: two concurrent runs of the same capability get distinct, non-colliding evidenceIds", async () => {
+  // Real production scenario: an agent invoking the same capability twice
+  // at once (two different customers). Found via adversarial concurrency
+  // testing that Date.now()-only run ids collide within the same
+  // millisecond, silently interleaving evidence logs and clobbering one
+  // run's result.json with the other's (see DECISIONS.md).
+  const artifact = loadArtifact("capabilities/lookup-savings-balance.json");
+  const [r1, r2] = await Promise.all([
+    replay(artifact, { memberId: "12345" }, TARGET_URL, EVIDENCE_ROOT),
+    replay(artifact, { memberId: "67890" }, TARGET_URL, EVIDENCE_ROOT),
+  ]);
+  assert.equal(r1.kind, "success");
+  assert.equal(r2.kind, "success");
+  if (r1.kind === "success" && r2.kind === "success") {
+    assert.notEqual(r1.evidenceId, r2.evidenceId, "concurrent runs must not collide on evidenceId");
+    assert.equal(r1.outputs.balance, "4820.55 USD");
+    assert.equal(r2.outputs.balance, "132.10 USD");
+  }
+});

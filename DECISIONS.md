@@ -490,6 +490,42 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
   `ERR_UNSAFE_PORT` without ever attempting a connection, which isn't representative of the
   real scenario being guarded against (a target app that's simply down/`ECONNREFUSED`).
 
+- **V15 — block-by-block production-scenario testing found 3 more real bugs.** Ran targeted
+  tests per architectural component (SurfaceAdapter, Guardrail Wrapper, Escalation Manager,
+  Artifact Compiler, Agent Loop), not just the replay/discovery entry points. Found:
+  1. **Evidence directory collision under concurrency** (Guardrail/Replayer block): two
+     concurrent replays of the same capability — a realistic production case, e.g. an agent
+     serving two customers at once — could start within the same millisecond and get the
+     identical `runId` (`Date.now()`-only), silently interleaving their `steps.log.jsonl` and
+     clobbering one run's `result.json` with the other's. Confirmed the actual corruption
+     (both runs' inputs appeared in one shared log file) before fixing. Fixed: appended an
+     8-char `randomUUID()` suffix to both `replay()`'s and `runDiscovery()`'s `runId`.
+     Re-verified: two concurrent runs now get fully distinct evidence directories, each with
+     only its own data. Added a regression test.
+  2. **Escalation operator-console port-bind crash** (Escalation Manager block): `app.listen()`
+     failing (`EADDRINUSE` — a stale process still holding the port, or two escalations
+     defaulting to the same port) emits an async `'error'` event on the `http.Server` that
+     isn't caught by any synchronous try/catch, crashing the whole process uncaught regardless
+     of the v14 hardening (event-emitter errors aren't try/catch-able the normal way). Fixed:
+     `server.once("error", ...)` races against the resume/timeout signals via `Promise.race`,
+     turning a bind failure into a thrown `Error` that the v14 outer catch-alls in
+     `replay()`/`runDiscovery()` correctly convert into a typed result. Verified: a real port
+     collision (two escalations, same port) now returns `Result.failure` instead of crashing.
+  3. **Artifact compiler crash on malformed/truncated transcripts** (Artifact Compiler block):
+     a transcript entry missing `observation.ax` or `observation.url` (plausible if a
+     discovery run crashed mid-write, or a transcript file got corrupted) crashed the compiler
+     with an unhelpful `"Cannot read properties of undefined"` — not a hang or uncaught crash
+     (the v14 CLI-level `.catch()` already contained it), but a real debugging-quality gap.
+     Fixed: both accesses default to `""` and the route-canonicalization call is wrapped so an
+     invalid URL is skipped rather than thrown — either degrades to "couldn't derive this
+     piece of metadata" rather than treating a data-quality problem as fatal.
+  Also verified without any bug found: a step whose primary locator strategy breaks but whose
+  fallback still resolves correctly falls through (proves the fallback-chain design, not a
+  bug); a step where *all* strategies break degrades to a clean typed failure; an LLM tool
+  call with `undefined` role/name args resolves to a literal `"undefined"` string, fails
+  cleanly, no crash; a near-zero (`0ms`) escalation timeout breaches immediately and cleanly,
+  correctly recorded in `sla.jsonl`. Full suite: 32/32 pass after all three fixes.
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No

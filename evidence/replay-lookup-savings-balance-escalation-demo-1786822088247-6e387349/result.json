@@ -1,0 +1,7 @@
+{
+  "kind": "failure",
+  "step": -1,
+  "expected": "replay to execute without an unexpected error",
+  "observed": "operator console failed to start on port 4201: listen EADDRINUSE: address already in use :::4201",
+  "evidenceId": "replay-lookup-savings-balance-escalation-demo-1786822088247-6e387349"
+}

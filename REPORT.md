@@ -123,6 +123,14 @@ any post-spawn failure), verified with a minimal standalone repro (hang → clea
 the full suite (31 tests, ~8.5s, no hang). The lesson generalizes: a caught exception proves
 the *caller* is safe, not that every resource opened before the exception was released.
 
+Follow-up block-by-block testing (Guardrails/Escalation/Compiler) found three more real
+bugs: concurrent replays of the same capability could collide on a `Date.now()`-only `runId`
+and silently corrupt each other's evidence (fixed with a random suffix); the operator
+console's port bind failure crashed uncaught via an async `'error'` event untouched by the
+above fixes (fixed by racing it into the resume/timeout signal); and a malformed transcript
+crashed the compiler with an unhelpful message instead of degrading gracefully (fixed). See
+DECISIONS.md for full detail — kept brief here to not further balloon this report's length.
+
 ## 4. Heterogeneity & multi-tenant
 
 **Surface abstraction.** The seam is `SurfaceAdapter` — nothing above it knows Playwright

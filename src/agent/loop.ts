@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { PlaywrightAdapter } from "../adapters/playwright-adapter.js";
 import { EvidenceLogger } from "../evidence/logger.js";
 import { callAnthropicWithTools } from "./anthropic-client.js";
@@ -43,7 +44,9 @@ export async function runDiscovery(
   evidenceRoot: string,
   options: DiscoveryOptions = {}
 ): Promise<DiscoveryResult> {
-  const runId = `discovery-${Date.now()}`;
+  // Same fix as replayer.ts's runId — Date.now() alone collides under
+  // concurrency (two discovery runs starting in the same millisecond).
+  const runId = `discovery-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const logger = new EvidenceLogger(evidenceRoot, runId);
   logger.log("system", "discovery_started", { goal, targetUrl });
 
