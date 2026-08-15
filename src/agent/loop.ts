@@ -47,7 +47,23 @@ export async function runDiscovery(
   const logger = new EvidenceLogger(evidenceRoot, runId);
   logger.log("system", "discovery_started", { goal, targetUrl });
 
-  const adapter = await PlaywrightAdapter.launch(targetUrl, true);
+  // Launch failure (target unreachable, bad URL) used to propagate straight
+  // past DiscoveryResult's typed shape and reject the whole promise instead
+  // of returning a clean "stuck" — found via adversarial testing (see
+  // DECISIONS.md), fixed the same way as the equivalent gap in replayer.ts.
+  let adapter: PlaywrightAdapter;
+  try {
+    adapter = await PlaywrightAdapter.launch(targetUrl, true);
+  } catch (err) {
+    logger.log("system", "discovery_stuck", { reason: "adapter_launch_failed" });
+    return {
+      kind: "stuck",
+      transcript: [],
+      reason: `adapter_launch_failed: ${err instanceof Error ? err.message : String(err)}`,
+      runId,
+    };
+  }
+
   const transcript: TranscriptEntry[] = [];
   const outputs: Record<string, unknown> = {};
   const historyLines: string[] = [];
@@ -154,6 +170,19 @@ export async function runDiscovery(
     }
 
     return await stuckOrEscalate("max_steps_exceeded");
+  } catch (err) {
+    // Catch-all for anything not already handled above: adapter.observe()
+    // throwing on a pathological page, callAnthropicWithTools throwing on a
+    // network error mid-run, etc. Same principle as replayer.ts's catch-all
+    // — an unexpected error becomes a typed "stuck" result, not a rejected
+    // promise that crashes whatever's driving the CLI/dashboard.
+    logger.log("system", "discovery_stuck", { reason: "unexpected_error" });
+    return {
+      kind: "stuck",
+      transcript,
+      reason: `unexpected_error: ${err instanceof Error ? err.message : String(err)}`,
+      runId,
+    };
   } finally {
     logger.writeJson("transcript.json", transcript);
     await adapter.close();

@@ -108,7 +108,26 @@ export async function replay(
     return result;
   }
 
-  const adapter = await PlaywrightAdapter.launch(startUrl);
+  // Launch failure (target app unreachable, bad URL, browser crash) is a
+  // real, previously-uncaught gap: it used to propagate straight past the
+  // whole typed-Result contract and crash the process. Found via
+  // adversarial testing (see DECISIONS.md) — fixed by treating it the same
+  // as any other hard failure.
+  let adapter: PlaywrightAdapter;
+  try {
+    adapter = await PlaywrightAdapter.launch(startUrl);
+  } catch (err) {
+    const result: Result = {
+      kind: "failure",
+      step: -1,
+      expected: "target application reachable and page loads",
+      observed: err instanceof Error ? err.message : String(err),
+      evidenceId: runId,
+    };
+    logger.writeResult(result);
+    return result;
+  }
+
   const outputs: Record<string, unknown> = {};
   const recoveriesApplied = new Map<number, number>();
   let escalatedOnceForStep = -1;
@@ -235,6 +254,22 @@ export async function replay(
     logger.log("system", "replay_success", { outputs });
     logger.writeResult(result);
     return result;
+  } catch (err) {
+    // Catch-all for anything NOT already handled above: checkBusinessOutcome/
+    // checkAndApplyRecoveries throwing (e.g. an oversized page causing a
+    // Playwright timeout during an AX snapshot), a malformed artifact shape
+    // (e.g. `steps` missing/not an array), or any other genuinely unexpected
+    // error. Found via adversarial testing, not theoretical: every one of
+    // these used to crash the process instead of returning a typed Result.
+    const result: Result = {
+      kind: "failure",
+      step: -1,
+      expected: "replay to execute without an unexpected error",
+      observed: err instanceof Error ? err.message : String(err),
+      evidenceId: runId,
+    };
+    logger.writeResult(result);
+    return result;
   } finally {
     await adapter.close();
   }
@@ -262,7 +297,11 @@ async function executeStep(
 async function checkSuccessCondition(adapter: PlaywrightAdapter, artifact: Artifact): Promise<boolean> {
   const cp = artifact.successCondition;
   if (cp.kind === "urlMatches") {
-    return new RegExp(cp.expected ?? "").test(adapter.page().url());
+    try {
+      return new RegExp(cp.expected ?? "").test(adapter.page().url());
+    } catch {
+      return false;
+    }
   }
   if (cp.kind === "elementVisible" && cp.target) {
     try {

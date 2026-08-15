@@ -102,6 +102,27 @@ this was tightened up). Every step also emits a per-run `drift.jsonl` entry — 
 strategy actually resolved (primary/fallback/miss) — closing the "logging hook exists, only
 the aggregation doesn't" gap into a real, inspectable signal (§4).
 
+**Crash-hardening, found via deliberate adversarial testing, not theoretical**: `replay()`/
+`runDiscovery()` only had `try { ... } finally { ... }` around their bodies — no catch-all. A
+malformed artifact (missing `steps`), an unreachable target during adapter launch, an
+oversized-input timeout during a business-outcome check, and an invalid regex in
+`successCondition` all used to propagate straight past the typed-`Result` contract and crash
+the process with a raw stack trace. Fixed: adapter launch wrapped separately, an outer catch
+added to both functions, `urlMatches`' regex guarded, and the CLI's `main()` wrapped in a
+top-level `.catch()` as a last line of defense.
+
+That layer alone wasn't sufficient, though — refusing to accept partial test output as
+"probably fine" surfaced a deeper, genuinely more serious bug: replaying against an
+unreachable target didn't just need a typed error, it **hung the whole process**. Root cause:
+`PlaywrightAdapter.launch()` spawns a real Chromium process before any of
+`newContext()`/`newPage()`/`goto()` run; when `goto()` failed, the exception escaped the
+static method before it could return an adapter to close — every caller's try/catch correctly
+produced a typed `Result`, but the orphaned browser process kept the event loop alive
+regardless. Fixed at the actual source (`launch()` now closes the browser before rethrowing on
+any post-spawn failure), verified with a minimal standalone repro (hang → clean exit), then
+the full suite (31 tests, ~8.5s, no hang). The lesson generalizes: a caught exception proves
+the *caller* is safe, not that every resource opened before the exception was released.
+
 ## 4. Heterogeneity & multi-tenant
 
 **Surface abstraction.** The seam is `SurfaceAdapter` — nothing above it knows Playwright

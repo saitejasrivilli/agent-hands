@@ -13,20 +13,33 @@ export class PlaywrightAdapter implements SurfaceAdapter {
   static async launch(startUrl: string, headless = true): Promise<PlaywrightAdapter> {
     const adapter = new PlaywrightAdapter();
     adapter.browser = await chromium.launch({ headless });
-    adapter.context = await adapter.browser.newContext();
-    adapter.currentPage = await adapter.context.newPage();
-    // A bounded action/navigation timeout is a real production safeguard,
-    // not just a test convenience: without it, a stalled backend hangs the
-    // whole replay indefinitely instead of surfacing a typed, debuggable
-    // failure. setDefaultTimeout covers locator actions (click/fill/etc,
-    // including the navigation a click implicitly triggers);
-    // setDefaultNavigationTimeout covers explicit goto/waitForNavigation —
-    // both are needed, they are NOT the same timeout in Playwright. Kept
-    // generous relative to this app's actual (near-instant) pages — only a
-    // genuinely stalled response should ever hit it.
-    adapter.currentPage.setDefaultTimeout(5000);
-    adapter.currentPage.setDefaultNavigationTimeout(5000);
-    await adapter.currentPage.goto(startUrl);
+    // Everything after this point that can throw (newContext/newPage/goto)
+    // is wrapped so a failure here still closes the already-spawned browser
+    // process before rethrowing. Found via adversarial testing: without
+    // this, a bad startUrl (unreachable host, or even a Chrome-blocked
+    // "unsafe port" like :1) orphaned a live Chromium process — every
+    // caller's own try/catch correctly turned the exception into a typed
+    // Result, but the orphaned browser process kept running (and kept
+    // Node's event loop alive) regardless, hanging the whole program.
+    try {
+      adapter.context = await adapter.browser.newContext();
+      adapter.currentPage = await adapter.context.newPage();
+      // A bounded action/navigation timeout is a real production safeguard,
+      // not just a test convenience: without it, a stalled backend hangs the
+      // whole replay indefinitely instead of surfacing a typed, debuggable
+      // failure. setDefaultTimeout covers locator actions (click/fill/etc,
+      // including the navigation a click implicitly triggers);
+      // setDefaultNavigationTimeout covers explicit goto/waitForNavigation —
+      // both are needed, they are NOT the same timeout in Playwright. Kept
+      // generous relative to this app's actual (near-instant) pages — only a
+      // genuinely stalled response should ever hit it.
+      adapter.currentPage.setDefaultTimeout(5000);
+      adapter.currentPage.setDefaultNavigationTimeout(5000);
+      await adapter.currentPage.goto(startUrl);
+    } catch (err) {
+      await adapter.browser.close().catch(() => {});
+      throw err;
+    }
     return adapter;
   }
 

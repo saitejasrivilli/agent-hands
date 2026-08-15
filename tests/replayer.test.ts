@@ -105,3 +105,34 @@ test("replay: drift signal distinguishes primary vs fallback locator resolution"
     "the value-specific primary strategy should miss for a member never seen during discovery"
   );
 });
+
+// Regression tests for real bugs found via adversarial testing (see
+// DECISIONS.md): replay() used to let several classes of unexpected error
+// escape the typed Result contract entirely and crash the process instead.
+test("replay: unreachable target returns Result.failure instead of throwing", async () => {
+  const artifact = loadArtifact("capabilities/lookup-savings-balance.json");
+  // Port 65432 chosen deliberately over something like :1 — Chrome refuses
+  // to even attempt a connection to certain low "unsafe" ports
+  // (ERR_UNSAFE_PORT) without ever spawning a real connection attempt,
+  // which isn't representative of the real scenario this test guards
+  // against (a target app that's simply down, i.e. ECONNREFUSED).
+  const result = await replay(artifact, { memberId: "12345" }, "http://localhost:65432/", EVIDENCE_ROOT);
+  assert.equal(result.kind, "failure");
+  if (result.kind === "failure") assert.equal(result.step, -1);
+});
+
+test("replay: malformed artifact (steps missing) returns Result.failure instead of throwing", async () => {
+  const artifact = loadArtifact("capabilities/lookup-savings-balance.json");
+  // @ts-expect-error deliberately malformed to test the catch-all
+  delete artifact.steps;
+  const result = await replay(artifact, { memberId: "12345" }, TARGET_URL, EVIDENCE_ROOT);
+  assert.equal(result.kind, "failure");
+  if (result.kind === "failure") assert.match(result.observed, /steps/i);
+});
+
+test("replay: invalid regex in successCondition.expected degrades to failure, not a crash", async () => {
+  const artifact = loadArtifact("capabilities/lookup-savings-balance.json");
+  artifact.successCondition = { kind: "urlMatches", expected: "[unclosed" };
+  const result = await replay(artifact, { memberId: "12345" }, TARGET_URL, EVIDENCE_ROOT);
+  assert.equal(result.kind, "failure");
+});

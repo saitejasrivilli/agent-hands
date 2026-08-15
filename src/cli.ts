@@ -93,4 +93,11 @@ async function main() {
   }
 }
 
-main();
+// Wraps the whole CLI, not just replay/discovery internals: a malformed
+// --artifact/--tenant-override/--transcript file (bad JSON, wrong shape)
+// used to crash with a raw Node stack trace instead of a clean, scriptable
+// error — found via adversarial testing (see DECISIONS.md), not theoretical.
+main().catch((err) => {
+  console.error(JSON.stringify({ kind: "cliError", message: err instanceof Error ? err.message : String(err) }, null, 2));
+  process.exit(1);
+});

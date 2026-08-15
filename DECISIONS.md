@@ -439,6 +439,57 @@ Explicitly NOT rewarded: feature breadth, framework name-dropping, building scal
     committed canonical escalation evidence example so it includes `sla.jsonl` (the prior
     committed example predated this feature). Full suite (28 tests) re-run, unaffected.
 
+- **V14 — adversarial testing found 4 real bugs, all fixed and regression-tested**: ran a
+  battery of break-attempts against the live system, not hypothetical. Found:
+  1. Malformed JSON `--artifact`/`--tenant-override`/`--transcript` file crashed the CLI with a
+     raw Node stack trace.
+  2. An artifact missing/malformed `steps` (e.g. not an array) crashed `replay()` with an
+     uncaught `TypeError`.
+  3. Target app unreachable (`ECONNREFUSED`) during `PlaywrightAdapter.launch()` crashed
+     uncaught, in both `replay()` and `runDiscovery()` — this call happened *before* either
+     function's try/finally even started, so the browser (if partially launched) was also
+     never cleaned up.
+  4. An oversized input value (100k-char string) caused a genuine Playwright `TimeoutError`
+     inside `checkBusinessOutcome`'s AX snapshot — outside the step-loop's own inner
+     try/catch, so it propagated uncaught past the entire typed-`Result` contract.
+  All four shared one root cause: `replay()`/`runDiscovery()` only had `try { ... } finally { ...
+  }` around their main bodies, no catch-all — anything not specifically anticipated (adapter
+  launch, business-outcome checks, recovery checks, `checkSuccessCondition`'s `urlMatches`
+  regex) bypassed the "always return a typed Result, never crash" design this whole project is
+  built on. Fixed: adapter launch wrapped in its own try (failure → clean `failure`/`stuck`,
+  no orphaned browser); an outer `catch` added to both functions' main try blocks (unexpected
+  error → typed result, not a crash); `checkSuccessCondition`'s `urlMatches` regex wrapped in
+  try/catch (an invalid pattern used to throw uncaught too); `cli.ts`'s `main()` wrapped in a
+  top-level `.catch()` as a last line of defense regardless of which command is run.
+  Verified: re-ran all 4 exact break-attempts, all now return clean structured results
+  (`cliError` for CLI-level failures, typed `Result.failure`/`stuck` for everything inside
+  replay/discovery) instead of raw crashes. Also verified, without any bug: strict `!== true`
+  correctly rejects a string `"true"` for the risky-action confirm gate (no type-confusion
+  bypass), an empty `steps: []` array degrades to a clean checkpoint failure, and the risky
+  gate can't be socially-engineered by any value shape tested. Added 3 regression tests
+  (unreachable target, malformed `steps`, invalid regex) so these specific bugs can't
+  silently reappear.
+- **A 5th, more serious bug, found only by refusing to accept partial test output as
+  "probably fine."** After adding the 3 regression tests above, `npm test` intermittently
+  produced truncated output and, under a hard `timeout`, exited 124 (killed) instead of
+  completing — a genuine hang, not a fluke. Isolated it to a single line: replaying against
+  an unreachable target left the process alive indefinitely. Root cause, found via a minimal
+  standalone repro script: `PlaywrightAdapter.launch()` calls `chromium.launch()` (spawns a
+  real browser process) *before* `newContext()`/`newPage()`/`goto()`, any of which can throw.
+  When `goto()` failed, the exception propagated out of the static `launch()` method before it
+  could return an adapter instance — so every caller's own try/catch correctly turned the
+  failure into a typed `Result`, but the already-spawned Chromium process was never closed,
+  kept running, and kept Node's event loop alive, hanging the whole program (test suite,
+  CLI, whatever called it). The layer of fixes above (typed Result everywhere) was necessary
+  but not sufficient — none of it touches a resource leak in the thing being caught.
+  Fixed at the actual source: `PlaywrightAdapter.launch()` now wraps
+  `newContext()`/`newPage()`/`goto()` in its own try, closing the browser before rethrowing on
+  any failure. Verified with the same minimal repro script (exit 124 → exit 0), then the full
+  suite (31 tests, all pass, ~8.5s, no hang). Also swapped the regression test's target port
+  from `:1` to `:65432` — port 1 is on Chrome's "unsafe ports" blocklist and produces
+  `ERR_UNSAFE_PORT` without ever attempting a connection, which isn't representative of the
+  real scenario being guarded against (a target app that's simply down/`ECONNREFUSED`).
+
 ## Decisions pending (resolved / consciously left as future work — see REPORT.md §7)
 - ~~Exact stop-condition thresholds~~ — resolved: max 8 steps / 120s, env-overridable (V1).
 - ~~Risky/irreversible action gating~~ — resolved: `Step.risky` + `inputs.confirm` (V4). No
